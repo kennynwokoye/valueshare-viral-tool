@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "npx netlify build && node fix-paths-post-build.js && node purge-cache.js && npx netlify deploy --prod --no-build --skip-functions-cache",
+    "deploy": "npx netlify build && node fix-paths-post-build.js && npx netlify deploy --prod --no-build --skip-functions-cache && node purge-cache.js",
     "purge": "node purge-cache.js"
   },
   "dependencies": {

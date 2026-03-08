@@ -41,7 +41,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
+    Cache-Control = "no-store"
     Netlify-CDN-Cache-Control = "no-store"
     X-Content-Type-Options = "nosniff"
 
