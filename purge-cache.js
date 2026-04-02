@@ -26,40 +26,56 @@ function getToken() {
   return null
 }
 
+function apiRequest(token, method, path, data) {
+  return new Promise((resolve, reject) => {
+    const body = data ? JSON.stringify(data) : null
+    const req = https.request({
+      hostname: 'api.netlify.com',
+      path,
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
+      },
+    }, (res) => {
+      let resp = ''
+      res.on('data', d => { resp += d })
+      res.on('end', () => resolve({ status: res.statusCode, body: resp }))
+    })
+    req.on('error', reject)
+    if (body) req.write(body)
+    req.end()
+  })
+}
+
 async function purge() {
   const token = getToken()
   if (!token) {
     console.log('Skipping CDN cache purge — no auth token found.')
     return
   }
-  console.log('Purging CDN cache...')
-  await new Promise((resolve, reject) => {
-    const data = JSON.stringify({ site_id: SITE_ID })
-    const req = https.request({
-      hostname: 'api.netlify.com',
-      path: '/api/v1/purge',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data),
-      },
-    }, (res) => {
-      let body = ''
-      res.on('data', d => { body += d })
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('CDN cache purged successfully.')
-          resolve()
-        } else {
-          reject(new Error(`Cache purge returned ${res.statusCode}: ${body}`))
-        }
-      })
+
+  // Purge the Netlify CDN cache (Edge + Durable) for the entire site.
+  // Passing both site_id and domain ensures both layers are targeted.
+  // Note: the permanent fix is Netlify-CDN-Cache-Control: no-store in next.config.ts
+  // which prevents HTML from ever entering the Durable Cache. This purge clears any
+  // stale entries that accumulated before that fix was in place.
+  console.log('Purging Netlify CDN cache (Edge + Durable)...')
+  // Purge both the netlify subdomain and the custom domain
+  const domains = ['valueshare.netlify.app', 'valueshare.co']
+  for (const domain of domains) {
+    const result = await apiRequest(token, 'POST', '/api/v1/purge', {
+      site_id: SITE_ID,
+      domain,
     })
-    req.on('error', reject)
-    req.write(data)
-    req.end()
-  })
+    if (result.status >= 200 && result.status < 300) {
+      console.log(`  ✓ Purged ${domain}`)
+    } else {
+      throw new Error(`Cache purge for ${domain} returned ${result.status}: ${result.body}`)
+    }
+  }
+  console.log('CDN cache purged successfully.')
 }
 
 purge().catch(err => console.error('Cache purge failed:', err.message))

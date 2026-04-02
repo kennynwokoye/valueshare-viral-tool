@@ -6,42 +6,42 @@ import Link from 'next/link'
 
 const SLIDES = [
   {
-    eyebrow: 'REVENUE GROWTH',
+    eyebrow: 'REWARD-POWERED GROWTH',
     headline: (
-      <>Turn every customer into a <span className="em">revenue channel</span></>
+      <>Turn your digital assets into a <span className="em">measurable growth engine</span></>
     ),
-    body: 'Launch viral referral campaigns in minutes. Track every share, click and conversion with real-time analytics.',
+    body: 'Set a goal, offer a reward, and let participants spread your campaign. ValueShare tracks every result and delivers rewards automatically.',
     stats: [
-      { val: '312%', lbl: 'Avg ROI' },
-      { val: '47K+', lbl: 'Active Creators' },
-      { val: '2.4M', lbl: 'Referrals Sent' },
+      { val: '<5 min', lbl: 'Campaign setup' },
+      { val: 'Real-time', lbl: 'Fraud detection' },
+      { val: 'Auto', lbl: 'Reward delivery' },
     ],
   },
   {
-    eyebrow: 'CREATOR SUCCESS',
+    eyebrow: 'CREATOR GROWTH',
     headline: (
-      <>Creators earn <span className="em-g">$2,400/mo</span> on average</>
+      <>Your existing value is <span className="em">untapped fuel</span> for growth</>
     ),
-    body: 'Our top creators build passive income streams through their audience. No upfront cost, just share and earn.',
+    body: 'Offer your mini-course, template, or blueprint as a reward. Participants share your campaign and unlock it when they hit milestones — growth on autopilot.',
     testimonial: {
       stars: '★★★★★',
-      quote: '"ValueShare transformed my newsletter into a revenue machine. I earned $3,200 last month from referrals alone."',
-      name: 'Sarah Chen',
-      role: 'Newsletter Creator • 45K subs',
+      quote: '"I launched a webinar campaign and hit 500 registrations in 72 hours. The referral mechanic did all the heavy lifting."',
+      name: 'Kenny Nwokoye',
+      role: 'Marketing Educator · 40K following',
       color: '#e85d3a',
-      initials: 'SC',
+      initials: 'KN',
     },
   },
   {
-    eyebrow: 'PLATFORM SCALE',
+    eyebrow: 'BUILT FOR RESULTS',
     headline: (
-      <>Built for <span className="em">scale</span>, designed for growth</>
+      <>Designed for <span className="em">real growth</span>, not vanity metrics</>
     ),
-    body: 'Enterprise-grade infrastructure with real-time tracking, fraud detection and automatic payouts.',
+    body: 'Track clicks, leads, and registrations tied to real business goals. Fraud controls, live analytics, and automatic fulfillment — no manual work required.',
     stats: [
-      { val: '99.9%', lbl: 'Uptime SLA' },
-      { val: '<50ms', lbl: 'Track Latency' },
-      { val: '150+', lbl: 'Countries' },
+      { val: 'Verified', lbl: 'Clicks only' },
+      { val: 'Live', lbl: 'Analytics' },
+      { val: '4 types', lbl: 'Reward delivery' },
     ],
   },
 ]
@@ -120,10 +120,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
           {/* Floating notification */}
           <div className="auth-float">
-            <div className="auth-float-ico" style={{ background: 'rgba(5,150,105,.1)' }}>🔔</div>
+            <div className="auth-float-ico" style={{ background: 'rgba(5,150,105,.1)' }}>🎯</div>
             <div>
-              <div className="auth-float-t">New referral converted!</div>
-              <div className="auth-float-s">sarah_c just earned $24.00</div>
+              <div className="auth-float-t">New milestone reached!</div>
+              <div className="auth-float-s">Adaeze just hit 50 clicks</div>
             </div>
           </div>
 

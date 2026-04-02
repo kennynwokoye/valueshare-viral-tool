@@ -88,7 +88,7 @@ function JoinForm() {
         <div className="auth-code-pill">
           <div className="auth-cp-ico">&#128274;</div>
           <div>
-            <div className="auth-cp-t">Enter your referral link email</div>
+            <div className="auth-cp-t">Enter your email address</div>
             <div className="auth-cp-s">We&apos;ll send you a 6-digit login code</div>
           </div>
         </div>

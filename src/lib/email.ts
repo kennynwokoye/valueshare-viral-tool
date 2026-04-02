@@ -1,9 +1,21 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const transporter = nodemailer.createTransport({
+  host: 'smtp.zeptomail.com',
+  port: 465,
+  secure: true,
+  auth: {
+    user: 'emailapikey',
+    pass: process.env.ZEPTOMAIL_SMTP_PASSWORD,
+  },
+})
 
-const FROM = `${process.env.RESEND_FROM_NAME || 'ValueShare'} <${process.env.RESEND_FROM_EMAIL || 'notifications@valueshare.netlify.app'}>`
+const FROM = `ValueShare <noreply@valueshare.co>`
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+
+async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+  await transporter.sendMail({ from: FROM, to, subject, html })
+}
 
 function baseTemplate(content: string): string {
   return `<!DOCTYPE html>
@@ -32,7 +44,14 @@ function baseTemplate(content: string): string {
           </tr>
           <tr>
             <td style="padding-top:24px;text-align:center;font-size:11px;color:#505068;">
-              If you didn&rsquo;t request this, you can safely ignore this email.
+              If you didn&rsquo;t request this, you can safely ignore this email.<br />
+              <span style="margin-top:8px;display:inline-block;">
+                You are receiving this because you have an account or campaign on ValueShare.
+                To unsubscribe from non-essential emails, visit
+                <a href="${APP_URL}/preferences" style="color:#505068;">valueshare.co/preferences</a>
+                or reply to this email with &ldquo;unsubscribe&rdquo;.<br />
+                ValueShare &mdash; Digital Referral Growth Platform
+              </span>
             </td>
           </tr>
         </table>
@@ -63,8 +82,7 @@ export async function sendOtpEmail({
       This code expires in 15 minutes.
     </p>`
 
-  await resend.emails.send({
-    from: FROM,
+  await sendEmail({
     to,
     subject: `${otp} \u2014 Your ValueShare login code`,
     html: baseTemplate(content),
@@ -113,8 +131,7 @@ export async function sendRewardUnlockedEmail({
     </div>
     ${ctaBlock}`
 
-  await resend.emails.send({
-    from: FROM,
+  await sendEmail({
     to,
     subject: `\u{1F389} You unlocked: ${rewardLabel}`,
     html: baseTemplate(content),
@@ -157,8 +174,7 @@ export async function sendParticipantWelcomeEmail({
       </a>
     </div>`
 
-  await resend.emails.send({
-    from: FROM,
+  await sendEmail({
     to,
     subject: `You joined '${campaignTitle}'!`,
     html: baseTemplate(content),
@@ -201,8 +217,7 @@ export async function sendCreatorRewardNotification({
       </a>
     </div>`
 
-  await resend.emails.send({
-    from: FROM,
+  await sendEmail({
     to,
     subject: `Action needed: Deliver reward to ${participantEmail}`,
     html: baseTemplate(content),
@@ -239,8 +254,7 @@ export async function sendFraudAlertEmail({
       </a>
     </div>`
 
-  await resend.emails.send({
-    from: FROM,
+  await sendEmail({
     to,
     subject: `\u26a0\ufe0f Fraud spike detected \u2014 ${campaignTitle}`,
     html: baseTemplate(content),
@@ -260,6 +274,36 @@ interface WeeklyDigestParams {
     startDate: string
     endDate: string
   }
+}
+
+export async function sendCreatorConfirmationEmail({
+  to,
+  confirmationUrl,
+}: {
+  to: string
+  confirmationUrl: string
+}) {
+  const content = `
+    <h2 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#f0f0f8;margin:0 0 8px 0;text-align:center;letter-spacing:-0.02em;">
+      Confirm your email
+    </h2>
+    <p style="font-size:13px;color:#9090a8;margin:0 0 24px 0;text-align:center;">
+      Click the button below to verify your email address and activate your ValueShare creator account.
+    </p>
+    <div style="text-align:center;margin:0 0 24px 0;">
+      <a href="${confirmationUrl}" style="display:inline-block;background:#00FF94;color:#07070f;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;padding:14px 28px;border-radius:2px;text-decoration:none;letter-spacing:0.05em;">
+        Confirm Email &rarr;
+      </a>
+    </div>
+    <p style="font-size:11px;color:#505068;margin:0;text-align:center;">
+      This link expires in 24 hours. If you didn&rsquo;t create an account, you can safely ignore this email.
+    </p>`
+
+  await sendEmail({
+    to,
+    subject: `Confirm your ValueShare creator account`,
+    html: baseTemplate(content),
+  })
 }
 
 export async function sendWeeklyDigestEmail({ to, creatorName, stats }: WeeklyDigestParams) {
@@ -294,7 +338,7 @@ export async function sendWeeklyDigestEmail({ to, creatorName, stats }: WeeklyDi
           <div style="font-size:26px;font-weight:700;color:#00FF94;">${stats.rewardsDelivered}</div>
           <div style="font-size:11px;color:#505068;margin-top:4px;">Rewards Delivered</div>
         </td>
-        <td style="background:#141425;border:1px solid #1e1e30;border-radius:2px;padding:14px;text-align:center;">
+        <td style="background:#141425;border:1px solid #1e1e30;border-radius:2px;padding:16px;text-align:center;">
           <div style="font-size:26px;font-weight:700;color:#e85d3a;">${stats.fraudBlocked}</div>
           <div style="font-size:11px;color:#505068;margin-top:4px;">Fraud Blocked</div>
         </td>
@@ -321,8 +365,7 @@ export async function sendWeeklyDigestEmail({ to, creatorName, stats }: WeeklyDi
       </a>
     </div>`
 
-  await resend.emails.send({
-    from: FROM,
+  await sendEmail({
     to,
     subject: `\u{1F4CA} Your ValueShare Week \u2014 ${stats.startDate}`,
     html: baseTemplate(content),

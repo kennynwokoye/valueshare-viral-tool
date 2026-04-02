@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import MobileNav from '@/components/MobileNav'
+import NavAuth from '@/components/NavAuth'
 
 export default function Home() {
   return (
@@ -13,12 +15,10 @@ export default function Home() {
           <Link href="/marketplace">Marketplace</Link>
           <a href="#how">How it works</a>
           <a href="#features">Features</a>
-          <a href="#testimonials">Pricing</a>
+          <Link href="/pricing">Pricing</Link>
         </div>
-        <div className="nav-r">
-          <Link href="/auth/login" className="n-si">Sign in</Link>
-          <Link href="/auth/signup" className="n-go">Get started free →</Link>
-        </div>
+        <MobileNav />
+        <NavAuth />
       </nav>
 
       {/* ── HERO ────────────────────────────────── */}
@@ -27,16 +27,16 @@ export default function Home() {
           <div>
             <div className="h-flag">
               <div className="flag-dot">◆</div>
-              Viral referral platform
+              Reward-powered growth platform
             </div>
             <h1 className="hp-h1">
-              Make sharing <span className="serif-em">irresistible</span>
-              <br />— and <span className="accent">watch traffic</span> flood in
+              Turn your best digital assets<br />into a{' '}
+              <span className="accent">growth engine</span>
             </h1>
             <p className="h-p">
-              ValueShare turns your existing funnel traffic into an unstoppable
-              referral engine. Set a goal, offer a reward, and let participants
-              do your marketing for you.
+              ValueShare helps creators, marketers, and solopreneurs grow traffic,
+              leads, and registrations by rewarding people for driving real results —
+              not just sharing links.
             </p>
             <div className="h-actions">
               <Link href="/auth/signup" className="btn-coral">Start for free →</Link>
@@ -144,34 +144,103 @@ export default function Home() {
       <div className="sec" id="how">
         <div className="eyebrow"><div className="eyebrow-line" />How it works</div>
         <h2 className="hp-h2">
-          From idea to <span className="em">viral campaign</span>
-          <br />in <span className="serif">three steps</span>
+          Launch a reward-powered growth<br />campaign{' '}
+          <span className="serif">in minutes</span>
         </h2>
         <p className="sub">No code. No agency. No complex setup. Just a campaign that markets itself.</p>
-        <div className="how">
+        <div className="how how-4">
           <div className="hw-c" data-n="01">
             <div className="hw-ico">🎯</div>
-            <div className="hw-t">Build your campaign</div>
+            <div className="hw-t">Choose the result you want</div>
             <p className="hw-d">
-              Use our live-preview editor to set your reward, write your landing
-              page, and configure your milestone goals. Looks exactly right from day one.
+              Set the exact action you want people to help you drive — clicks, leads,
+              webinar registrations, email subscribers, or waitlist signups.
             </p>
           </div>
           <div className="hw-c" data-n="02">
-            <div className="hw-ico">⚡</div>
-            <div className="hw-t">Add the snippet</div>
+            <div className="hw-ico">🎁</div>
+            <div className="hw-t">Attach a reward people actually want</div>
             <p className="hw-d">
-              One line on your thank-you page. The ValueShare widget appears,
-              recruits your converters as participants, and gets them sharing instantly.
+              Offer a blueprint, mini-course, template, bonus, or resource pack your
+              audience wants badly enough to share for.
             </p>
           </div>
           <div className="hw-c" data-n="03">
-            <div className="hw-ico">🚀</div>
-            <div className="hw-t">Traffic multiplies</div>
+            <div className="hw-ico">🔗</div>
+            <div className="hw-t">Let participants spread the campaign</div>
             <p className="hw-d">
-              Unique links spread. Clicks are tracked and verified. Rewards
-              auto-deliver the moment milestones are hit. Zero manual work required.
+              Each participant gets a unique ValueShare link. As they share, ValueShare
+              tracks the results and attributes every qualifying action to the right person.
             </p>
+          </div>
+          <div className="hw-c" data-n="04">
+            <div className="hw-ico">⚡</div>
+            <div className="hw-t">Reward performance automatically</div>
+            <p className="hw-d">
+              When milestones are reached, ValueShare verifies the result and delivers
+              the reward instantly. No spreadsheets. No manual tracking. No chasing people down.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── USE CASES ────────────────────────────── */}
+      <div className="sec" id="use-cases" style={{ paddingTop: 0 }}>
+        <div className="eyebrow"><div className="eyebrow-line" />Use cases</div>
+        <h2 className="hp-h2">
+          Built for the kinds of growth campaigns<br />
+          <span className="serif">internet businesses actually run</span>
+        </h2>
+        <div className="uc-grid">
+          <div className="uc-c">
+            <div className="uc-ico">🎓</div>
+            <div className="uc-t">Offer a mini-course in exchange for webinar signups</div>
+          </div>
+          <div className="uc-c">
+            <div className="uc-ico">📧</div>
+            <div className="uc-t">Use a lead magnet to multiply email list growth</div>
+          </div>
+          <div className="uc-c">
+            <div className="uc-ico">🚀</div>
+            <div className="uc-t">Drive waitlist signups for an upcoming SaaS or product launch</div>
+          </div>
+          <div className="uc-c">
+            <div className="uc-ico">💬</div>
+            <div className="uc-t">Reward referrals that bring people into your WhatsApp or community funnel</div>
+          </div>
+          <div className="uc-c">
+            <div className="uc-ico">📄</div>
+            <div className="uc-t">Turn templates, blueprints, or bonuses into traffic-generating campaign assets</div>
+          </div>
+          <div className="uc-c">
+            <div className="uc-ico">🎯</div>
+            <div className="uc-t">Run launch campaigns that reward measurable outcomes, not empty shares</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── WHY VALUESHARE EXISTS ─────────────────── */}
+      <div className="why-sec">
+        <div className="why-inner">
+          <div className="eyebrow eyebrow-light"><div className="eyebrow-line-light" />Why ValueShare exists</div>
+          <h2 className="hp-h2" style={{ color: '#fff' }}>
+            Most businesses already have value.<br />
+            <span className="serif" style={{ color: 'var(--coral)' }}>They just aren&apos;t using it as a growth asset.</span>
+          </h2>
+          <p className="why-body">
+            Creators and marketers are sitting on underused digital assets — courses, checklists, swipe files,
+            training videos, templates, and bonuses. ValueShare helps you package that value into a clear incentive
+            so your audience, supporters, and customers can help you grow.
+          </p>
+          <div className="why-ps">
+            <div className="why-p">
+              <div className="why-p-label">More than referral software</div>
+              <p className="why-p-txt">
+                ValueShare is built for businesses that want outcome-driven growth. Instead of relying only on ads,
+                generic affiliate systems, or manual referral tracking, you can launch reward-powered campaigns that
+                motivate people to help you grow — and reward them automatically when they deliver results.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -237,15 +306,15 @@ export default function Home() {
         <div className="cta-inner">
           <div className="cta-l">
             <h2 className="hp-h2">
-              Your next campaign<br />starts{' '}
-              <span className="serif-em" style={{ color: 'var(--coral)' }}>today</span>
+              If you already have value,<br />
+              you already have <span className="serif-em" style={{ color: 'var(--coral)' }}>fuel for growth</span>
             </h2>
-            <p>No credit card. No developer. No excuses. Launch in minutes.</p>
+            <p>Launch a ValueShare campaign and turn your audience, supporters, and customers into a measurable distribution channel.</p>
           </div>
           <div className="cta-r">
-            <Link href="/auth/signup" className="btn-wh2">Create free account →</Link>
-            <a href="#how" className="btn-coral2">See live demo</a>
-            <div className="cta-note">Free forever · No credit card required</div>
+            <Link href="/auth/signup" className="btn-wh2">Create your first campaign →</Link>
+            <a href="#how" className="btn-coral2">See how it works</a>
+            <div className="cta-note">Free to start · No credit card required</div>
           </div>
         </div>
       </div>
@@ -256,7 +325,7 @@ export default function Home() {
           <div className="f-logo-ic">◆</div>
           ValueShare
         </div>
-        <div className="f-copy">© 2025 ValueShare. All rights reserved.</div>
+        <div className="f-copy">© 2026 ValueShare. All rights reserved.</div>
       </footer>
     </>
   )

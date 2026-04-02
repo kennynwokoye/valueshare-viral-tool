@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { MarketplaceCampaign, CampaignTemplate } from '@/types'
 import { formatNumber, formatTimeRemaining, getProgressPercentage } from '@/lib/utils'
+import NavAuth from '@/components/NavAuth'
+import MobileNav from '@/components/MobileNav'
 
 // ── Template display config ───────────────────────────────────────────
 const TEMPLATE_CONFIG: Record<string, { label: string; color: string; bg: string; gradient: string }> = {
@@ -74,10 +76,8 @@ export default function MarketplaceClient({ campaigns }: { campaigns: Marketplac
           <Link href="/#how">How it works</Link>
           <Link href="/#features">Features</Link>
         </div>
-        <div className="nav-r">
-          <Link href="/auth/login" className="n-si">Sign in</Link>
-          <Link href="/auth/signup" className="n-go">Get started free →</Link>
-        </div>
+        <MobileNav />
+        <NavAuth />
       </nav>
 
       {/* ── Hero ────────────────────────────────────── */}

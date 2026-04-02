@@ -17,7 +17,7 @@ interface WidgetAnalytics {
   conversionRate: number
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://valueshare.netlify.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://valueshare.co'
 
 const PLATFORMS = [
   {
@@ -112,6 +112,41 @@ export default function WidgetBrowser({ campaign, onClose }: Props) {
 
   const iframeCode = useCallback((): string => {
     const id = `vs-${widget?.widget_key}`
+    const position = campaign.landing_config?.widgetPosition ?? 'inline'
+
+    if (position === 'bottom-right') {
+      return [
+        `<div id="${id}-wrap" style="position:fixed;bottom:24px;right:24px;width:360px;z-index:9999;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.25)">`,
+        `<iframe`,
+        `  id="${id}"`,
+        `  src="${APP_URL}/w/${widget?.widget_key}"`,
+        '  width="100%"',
+        '  height="420"',
+        '  style="border:none;transition:height .2s ease"',
+        `  title="${campaign.name}">`,
+        '</iframe>',
+        '</div>',
+        '<script>',
+        'window.addEventListener("message",function(e){',
+        `  if(e.data&&e.data.type==="vs:resize"){`,
+        `    var f=document.getElementById("${id}");`,
+        '    if(f){f.style.height=Math.ceil(e.data.height)+"px";document.getElementById("' + id + '-wrap").style.height=Math.ceil(e.data.height)+"px";}',
+        '  }',
+        '});',
+        '</script>',
+      ].join('\n')
+    }
+
+    if (position === 'top-banner') {
+      return [
+        `<div style="width:100%;background:${accentColor};padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;position:sticky;top:0;z-index:999">`,
+        `  <span style="color:#fff;font-weight:600;font-family:sans-serif;font-size:14px">${headline || campaign.headline || 'Join & earn rewards'}</span>`,
+        `  <a href="${APP_URL}/w/${widget?.widget_key}/click" target="_blank" style="background:rgba(0,0,0,.15);color:#fff;padding:6px 16px;border-radius:4px;text-decoration:none;font-family:sans-serif;font-size:13px;font-weight:600">${ctaText}</a>`,
+        `</div>`,
+      ].join('\n')
+    }
+
+    // Default: inline
     return [
       `<iframe`,
       `  id="${id}"`,
@@ -130,7 +165,7 @@ export default function WidgetBrowser({ campaign, onClose }: Props) {
       '});',
       '</script>',
     ].join('\n')
-  }, [widget?.widget_key, campaign.name])
+  }, [widget?.widget_key, campaign.name, campaign.headline, campaign.landing_config?.widgetPosition, accentColor, headline, ctaText])
 
   const buttonCode = useCallback((): string => {
     return [
@@ -192,11 +227,11 @@ export default function WidgetBrowser({ campaign, onClose }: Props) {
       '    window.addEventListener("message",function(e){',
       '      if(e.data&&e.data.type==="vs:resize"){fr.style.height=Math.ceil(e.data.height)+"px";md.style.height=(Math.ceil(e.data.height)+10)+"px";}',
       '    });',
-      '  },5000);',
+      `  },${ (campaign.landing_config?.widgetDelay ?? 5) * 1000});`,
       '})();',
       '<' + '/script>',
     ].join('\n')
-  }, [widget?.widget_key, accentColor, ctaText])
+  }, [widget?.widget_key, accentColor, ctaText, campaign.landing_config?.widgetDelay])
 
   function getCode(): string {
     if (activeTab === 'embed') return iframeCode()

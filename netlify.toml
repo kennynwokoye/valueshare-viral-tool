@@ -9,6 +9,16 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Strip the 'durable' directive from netlify-cdn-cache-control on HTML responses.
+# @netlify/plugin-nextjs always adds 'durable' for cached pages, causing Netlify to
+# store HTML in its Durable Cache (~1-year TTL). After a deploy changes CSS hashes,
+# the stale Durable Cache HTML references missing CSS → 404 → text/plain → unstyled page.
+# This edge function intercepts responses after the server handler and removes 'durable'
+# so HTML is only stored in the Edge CDN (short TTL, purged on deploy), never Durable Cache.
+[[edge_functions]]
+  path = "/*"
+  function = "strip-html-durable"
+
 [[plugins]]
   package = "./plugins/fix-windows-paths"
 

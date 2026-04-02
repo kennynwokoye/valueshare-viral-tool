@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatReferralUrl, generateShareCaptions } from '@/lib/utils'
 import { buildShareUrl } from '@/lib/share'
@@ -30,8 +30,6 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [copied, setCopied] = useState(false)
   const [captionCopied, setCaptionCopied] = useState(false)
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-
   const referralLink = formatReferralUrl(referralCode)
   const gradient = TEMPLATE_GRADIENT[campaign.template ?? ''] ?? 'linear-gradient(135deg,#e85d3a,#f97316)'
 
@@ -44,13 +42,6 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
         kpiType: campaign.kpi_type,
       })
     : null
-
-  // Generate QR in background from step 1 onwards
-  useEffect(() => {
-    import('qrcode').then((QRCode) => {
-      QRCode.toDataURL(referralLink, { width: 200, margin: 2 }).then(setQrDataUrl)
-    }).catch(() => {})
-  }, [referralLink])
 
   function handleCopy() {
     navigator.clipboard.writeText(referralLink).catch(() => {})
@@ -133,7 +124,7 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
             <div className="ob-how-list">
               <div className="ob-how-item">
                 <div className="ob-how-num">1</div>
-                <div>Share your unique referral link with friends &amp; your audience</div>
+                <div>Share your unique ValueShare link with friends &amp; your audience</div>
               </div>
               <div className="ob-how-item">
                 <div className="ob-how-num">2</div>
@@ -158,7 +149,7 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
         {/* ── Step 2: Copy your link ───────────────────── */}
         {step === 2 && (
           <div className="ob-body">
-            <div className="ob-step-title">🔗 Your unique referral link</div>
+            <div className="ob-step-title">🔗 Your unique ValueShare link</div>
             <p className="ob-step-sub">
               Every click through this link is attributed only to you and counts toward your reward.
             </p>
@@ -193,31 +184,6 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
             <div className="ob-step-title">🖼️ Promotional materials</div>
             <p className="ob-step-sub">Use these to make sharing easier.</p>
 
-            {/* QR Code */}
-            <div className="ob-qr-wrap">
-              {qrDataUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrDataUrl} alt="Referral QR Code" width={160} height={160} style={{ borderRadius: 12 }} />
-                  <button
-                    className="ob-dl-btn"
-                    onClick={() => {
-                      const a = document.createElement('a')
-                      a.href = qrDataUrl
-                      a.download = `valueshare-qr-${referralCode}.png`
-                      a.click()
-                    }}
-                  >
-                    ⬇ Save QR Code
-                  </button>
-                </>
-              ) : (
-                <div style={{ width: 160, height: 160, background: 'var(--vs-surface-2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--vs-text-3)' }}>
-                  Generating…
-                </div>
-              )}
-            </div>
-
             {/* Creator promo assets */}
             {promoAssets.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
@@ -239,7 +205,7 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
               </div>
             ) : (
               <div style={{ fontSize: 13, color: 'var(--vs-text-3)', marginBottom: 24, padding: '12px 0' }}>
-                No extra materials yet — your QR code and referral link are all you need!
+                No extra materials yet — your ValueShare link is all you need!
               </div>
             )}
 

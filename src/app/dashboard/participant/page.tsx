@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParticipantContext } from './layout'
 import { useParticipantDashboard } from '@/hooks/useParticipantDashboard'
-import { useRealtimeClicks } from '@/hooks/useRealtimeClicks'
+import { useParticipantRealtime } from '@/hooks/useParticipantRealtime'
 import { formatReferralUrl, getProgressPercentage, generateShareCaptions, formatTimeRemaining } from '@/lib/utils'
 import { buildShareUrl } from '@/lib/share'
 import { createClient } from '@/lib/supabase/client'
+import CelebrationOverlay from '@/components/CelebrationOverlay'
+import Toast from '@/components/Toast'
 import type { ReferralClick, RewardTier, RewardUnlock, LeaderboardEntry, CampaignSwitcherItem } from '@/types'
 
 type Page = 'overview' | 'progress' | 'share' | 'leaderboard' | 'reward'
@@ -71,18 +73,75 @@ function timeAgo(iso: string): string {
 
 export default function ParticipantDashboardPage() {
   const ctx = useParticipantContext()
-  const { data, loading, error, refresh } = useParticipantDashboard(
+  const { data, loading, error, refresh, patchData } = useParticipantDashboard(
     ctx.participant?.id ?? null,
     ctx.activeCampaignId
   )
-  const { realtimeClicks, realtimeClickCount } = useRealtimeClicks(
+  const {
+    realtimeClicks,
+    realtimeClickCount,
+    realtimeConversionCount,
+    newRewardUnlock,
+    dismissRewardUnlock,
+    leaderboardStale,
+    clearLeaderboardStale,
+    campaignStatusChange,
+    clearCampaignStatus,
+  } = useParticipantRealtime(
     ctx.participant?.id ?? null,
     ctx.activeCampaignId,
-    data?.participant.click_count ?? 0
+    data?.participant.click_count ?? 0,
+    data?.rewardTiers ?? []
   )
 
   const [activePage, setActivePage] = useState<Page>('overview')
   const [copied, setCopied] = useState(false)
+  const [statusToast, setStatusToast] = useState<string | null>(null)
+  const prevRankRef = useRef<number | null>(null)
+  const [rankChanged, setRankChanged] = useState(false)
+
+  // ── Leaderboard live re-fetch ────────────────────────
+  useEffect(() => {
+    if (!leaderboardStale || !ctx.activeCampaignId || !ctx.participant?.id) return
+    fetch(`/api/dashboard/participant?campaignId=${ctx.activeCampaignId}&participantId=${ctx.participant.id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        patchData({
+          leaderboard: json.leaderboard ?? [],
+          myRank: json.myRank ?? null,
+          totalParticipants: json.totalParticipants ?? 0,
+        })
+      })
+      .finally(() => clearLeaderboardStale())
+  }, [leaderboardStale, ctx.activeCampaignId, ctx.participant?.id, patchData, clearLeaderboardStale])
+
+  // ── Rank change animation trigger ────────────────────
+  useEffect(() => {
+    if (data?.myRank != null && prevRankRef.current != null && data.myRank !== prevRankRef.current) {
+      setRankChanged(true)
+      const t = setTimeout(() => setRankChanged(false), 1500)
+      return () => clearTimeout(t)
+    }
+    prevRankRef.current = data?.myRank ?? null
+  }, [data?.myRank])
+
+  // ── Campaign status change toast ─────────────────────
+  useEffect(() => {
+    if (campaignStatusChange) {
+      setStatusToast(`This campaign has been ${campaignStatusChange} by the creator`)
+    }
+  }, [campaignStatusChange])
+
+  // ── Reward unlock → also update dashboard data ───────
+  useEffect(() => {
+    if (!newRewardUnlock || !data) return
+    const alreadyUnlocked = data.unlockedRewards.some((u) => u.id === newRewardUnlock.id)
+    if (!alreadyUnlocked) {
+      patchData({
+        unlockedRewards: [...data.unlockedRewards, newRewardUnlock],
+      })
+    }
+  }, [newRewardUnlock, data, patchData])
 
   // Wire sidebar nav from layout
   useEffect(() => {
@@ -115,6 +174,12 @@ export default function ParticipantDashboardPage() {
   // Merge realtime clicks with initial data
   const allClicks = [...realtimeClicks, ...(data?.recentClicks ?? [])]
   const clickCount = realtimeClickCount ?? data?.participant.click_count ?? 0
+  const conversionCount = realtimeConversionCount ?? data?.participant.conversion_count ?? 0
+  const kpiType = data?.campaign.kpi_type ?? 'clicks'
+  const KPI_LABELS: Record<string, string> = { clicks: 'clicks', registrations: 'sign-ups', purchases: 'purchases', shares: 'shares' }
+  const kpiLabel = KPI_LABELS[kpiType] ?? kpiType
+  // For non-click campaigns, reward progress is driven by conversion_count (pixel/webhook)
+  const progressCount = kpiType !== 'clicks' ? conversionCount : clickCount
 
   function handleCopy() {
     if (!data?.participant.referral_code) return
@@ -164,9 +229,9 @@ export default function ParticipantDashboardPage() {
   }
 
   const referralLink = formatReferralUrl(data.participant.referral_code)
-  const nextTier = data.rewardTiers.find((t) => t.threshold > clickCount) ?? data.rewardTiers[data.rewardTiers.length - 1]
-  const progress = nextTier ? getProgressPercentage(clickCount, nextTier.threshold) : 100
-  const goalReached = nextTier ? clickCount >= nextTier.threshold : true
+  const nextTier = data.rewardTiers.find((t) => t.threshold > progressCount) ?? data.rewardTiers[data.rewardTiers.length - 1]
+  const progress = nextTier ? getProgressPercentage(progressCount, nextTier.threshold) : 100
+  const goalReached = nextTier ? progressCount >= nextTier.threshold : true
   const streak = calcStreak(allClicks)
 
   const captions = nextTier
@@ -185,6 +250,8 @@ export default function ParticipantDashboardPage() {
         <OverviewPage
           data={data}
           clickCount={clickCount}
+          progressCount={progressCount}
+          kpiLabel={kpiLabel}
           allClicks={allClicks}
           referralLink={referralLink}
           nextTier={nextTier ?? null}
@@ -198,7 +265,7 @@ export default function ParticipantDashboardPage() {
         />
       )}
       {activePage === 'progress' && (
-        <ProgressPage data={data} clickCount={clickCount} campaigns={ctx.campaigns} />
+        <ProgressPage data={data} clickCount={clickCount} progressCount={progressCount} kpiLabel={kpiLabel} campaigns={ctx.campaigns} />
       )}
       {activePage === 'share' && (
         <SharePage data={data} referralLink={referralLink} captions={captions} onCopy={handleCopy} copied={copied} />
@@ -207,7 +274,29 @@ export default function ParticipantDashboardPage() {
         <LeaderboardPage data={data} />
       )}
       {activePage === 'reward' && (
-        <RewardPage data={data} clickCount={clickCount} />
+        <RewardPage data={data} clickCount={clickCount} progressCount={progressCount} kpiLabel={kpiLabel} />
+      )}
+
+      {/* Reward unlock celebration overlay */}
+      {newRewardUnlock && (
+        <CelebrationOverlay
+          rewardLabel={newRewardUnlock.tier.reward_label}
+          rewardType={newRewardUnlock.tier.reward_type}
+          tierLabel={newRewardUnlock.tier.label}
+          onDismiss={dismissRewardUnlock}
+          onViewReward={() => { dismissRewardUnlock(); setActivePage('reward') }}
+        />
+      )}
+
+      {/* Campaign status change toast */}
+      {statusToast && (
+        <Toast
+          message={statusToast}
+          type="warning"
+          icon="⚠️"
+          duration={6000}
+          onDismiss={() => { setStatusToast(null); clearCampaignStatus() }}
+        />
       )}
     </>
   )
@@ -246,6 +335,8 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
 interface OverviewProps {
   data: NonNullable<ReturnType<typeof useParticipantDashboard>['data']>
   clickCount: number
+  progressCount: number
+  kpiLabel: string
   allClicks: ReferralClick[]
   referralLink: string
   nextTier: RewardTier | null
@@ -258,7 +349,7 @@ interface OverviewProps {
   onNavigate: (p: Page) => void
 }
 
-function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, progress, goalReached, streak, captions, onCopy, copied, onNavigate }: OverviewProps) {
+function OverviewPage({ data, clickCount, progressCount, kpiLabel, allClicks, referralLink, nextTier, progress, goalReached, streak, captions, onCopy, copied, onNavigate }: OverviewProps) {
   const threshold = nextTier?.threshold ?? 0
   const gaugeCircumference = 2 * Math.PI * 56
   const gaugeOffset = gaugeCircumference - (Math.min(progress, 100) / 100) * gaugeCircumference
@@ -278,15 +369,15 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
           <div className="mh-campaign">{data.campaign.name.split(' ').map((w, i) => i === 0 ? w + ' ' : <span key={i}>{w} </span>)}</div>
           <div className="mh-goal">
             {goalReached
-              ? <>Drive {threshold} verified clicks to unlock your reward. You&apos;ve already <strong style={{ color: 'rgba(255,255,255,.9)' }}>exceeded the goal!</strong></>
-              : <>Drive {threshold} verified clicks to unlock {nextTier?.reward_label}. You need <strong style={{ color: 'rgba(255,255,255,.9)' }}>{threshold - clickCount} more</strong>.</>}
+              ? <>Get {threshold} {kpiLabel} to unlock your reward. You&apos;ve already <strong style={{ color: 'rgba(255,255,255,.9)' }}>exceeded the goal!</strong></>
+              : <>Get {threshold} {kpiLabel} to unlock {nextTier?.reward_label}. You need <strong style={{ color: 'rgba(255,255,255,.9)' }}>{threshold - progressCount} more</strong>.</>}
           </div>
           <div className="mh-prog-label">
-            <div className="mh-prog-left">{clickCount} clicks earned</div>
+            <div className="mh-prog-left">{progressCount} {kpiLabel} earned</div>
             <div className="mh-prog-right">{goalReached ? `${progress}% ✓` : `${progress}%`}</div>
           </div>
           <div className="mh-prog-track"><div className="mh-prog-fill" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
-          <div className="mh-prog-sub">Goal: {threshold} clicks · Reward: {nextTier?.reward_label ?? 'N/A'}</div>
+          <div className="mh-prog-sub">Goal: {threshold} {kpiLabel} · Reward: {nextTier?.reward_label ?? 'N/A'}</div>
         </div>
         <div className="mh-right">
           <div className="big-gauge">
@@ -295,8 +386,8 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
               <circle cx="70" cy="70" r="56" fill="none" stroke="var(--emerald)" strokeWidth="10" strokeDasharray={gaugeCircumference} strokeDashoffset={gaugeOffset} strokeLinecap="round" />
             </svg>
             <div className="gauge-center">
-              <div className="gc-val">{clickCount}</div>
-              <div className="gc-sub">clicks</div>
+              <div className="gc-val">{progressCount}</div>
+              <div className="gc-sub">{kpiLabel}</div>
               <div className="gc-goal">{goalReached ? `goal: ${threshold} ✓` : `goal: ${threshold}`}</div>
             </div>
           </div>
@@ -308,9 +399,9 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
       <div className="kpi-strip">
         <div className="kpi">
           <div className="kpi-glow" style={{ background: 'var(--emerald)' }} />
-          <div className="kpi-eyebrow">My clicks</div>
-          <div className="kpi-value">{clickCount}</div>
-          <div className={`kpi-change ${goalReached ? 'up' : ''}`}>{goalReached ? '🔥 Goal exceeded!' : `${threshold - clickCount} to go`}</div>
+          <div className="kpi-eyebrow">My {kpiLabel}</div>
+          <div className="kpi-value">{progressCount}</div>
+          <div className={`kpi-change ${goalReached ? 'up' : ''}`}>{goalReached ? '🔥 Goal exceeded!' : `${threshold - progressCount} to go`}</div>
           <div className="kpi-sub">Needed {threshold} to unlock</div>
         </div>
         <div className="kpi">
@@ -342,7 +433,7 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
           {/* Referral Link Card */}
           <div className="p-card">
             <div className="p-card-hd">
-              <div><div className="p-card-title">Your referral link</div><div className="p-card-sub">Share this to earn clicks</div></div>
+              <div><div className="p-card-title">Your ValueShare link</div><div className="p-card-sub">Share this to earn clicks</div></div>
               <div className="chip chip-green">Active</div>
             </div>
             <div className="ref-box">
@@ -369,7 +460,7 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
             <div className="tips-grid">
               <div className="tip-card"><div className="tip-ico">💬</div><div className="tip-t">WhatsApp Status</div><div className="tip-s">Post your flyer as a status — it reaches all your contacts automatically.</div></div>
               <div className="tip-card"><div className="tip-ico">👥</div><div className="tip-t">Group Chats</div><div className="tip-s">Share in WhatsApp and Telegram groups for 10× the reach.</div></div>
-              <div className="tip-card"><div className="tip-ico">📲</div><div className="tip-t">Stories</div><div className="tip-s">Facebook and Instagram Stories with your referral link in bio.</div></div>
+              <div className="tip-card"><div className="tip-ico">📲</div><div className="tip-t">Stories</div><div className="tip-s">Facebook and Instagram Stories with your ValueShare link in bio.</div></div>
               <div className="tip-card"><div className="tip-ico">✍️</div><div className="tip-t">Use the Caption</div><div className="tip-s">Our pre-written caption is optimised for engagement. Copy it!</div></div>
             </div>
           </div>
@@ -387,9 +478,9 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
                 <div className="rh-icon">{goalReached ? '🎓' : '🔒'}</div>
                 <div className="rh-info">
                   <div className="rh-name">{nextTier.reward_label}</div>
-                  <div className="rh-desc">{nextTier.preview_teaser ?? `Unlock by reaching ${nextTier.threshold} clicks`}</div>
+                  <div className="rh-desc">{nextTier.preview_teaser ?? `Unlock by reaching ${nextTier.threshold} ${kpiLabel}`}</div>
                   <div className="rh-prog-row">
-                    <div className="rh-prog-l">{clickCount} / {nextTier.threshold} clicks</div>
+                    <div className="rh-prog-l">{progressCount} / {nextTier.threshold} {kpiLabel}</div>
                     <div className="rh-prog-r">{goalReached ? '✓ Complete' : `${progress}%`}</div>
                   </div>
                   <div className="rh-bar"><div className="rh-fill" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
@@ -446,11 +537,19 @@ function OverviewPage({ data, clickCount, allClicks, referralLink, nextTier, pro
    MY PROGRESS PAGE
    ══════════════════════════════════════════ */
 
-function ProgressPage({ data, clickCount, campaigns }: {
+function ProgressPage({ data, clickCount, progressCount, kpiLabel, campaigns }: {
   data: NonNullable<ReturnType<typeof useParticipantDashboard>['data']>
   clickCount: number
+  progressCount: number
+  kpiLabel: string
   campaigns: CampaignSwitcherItem[]
 }) {
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  function handleCopyLink(referralCode: string, campaignId: string) {
+    navigator.clipboard.writeText(formatReferralUrl(referralCode))
+    setCopiedId(campaignId)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
   const milestones = [
     {
       status: 'done' as const,
@@ -459,20 +558,20 @@ function ProgressPage({ data, clickCount, campaigns }: {
       sub: new Date(data.participant.joined_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     },
     ...data.rewardTiers.map((tier) => {
-      const done = clickCount >= tier.threshold
-      const isCurrent = !done && (data.rewardTiers.find((t) => t.threshold > clickCount)?.id === tier.id)
+      const done = progressCount >= tier.threshold
+      const isCurrent = !done && (data.rewardTiers.find((t) => t.threshold > progressCount)?.id === tier.id)
       return {
         status: done ? 'done' as const : isCurrent ? 'current' as const : 'next' as const,
         icon: done ? '✓' : isCurrent ? '🔥' : '🔒',
         label: done
-          ? `${tier.label} — ${tier.threshold} clicks ✓`
+          ? `${tier.label} — ${tier.threshold} ${kpiLabel} ✓`
           : isCurrent
-            ? `${tier.label} — ${clickCount}/${tier.threshold} clicks`
-            : `${tier.label} — ${tier.threshold} clicks`,
+            ? `${tier.label} — ${progressCount}/${tier.threshold} ${kpiLabel}`
+            : `${tier.label} — ${tier.threshold} ${kpiLabel}`,
         sub: done
           ? `Reward: ${tier.reward_label} · Unlocked`
           : isCurrent
-            ? `${tier.threshold - clickCount} more clicks needed`
+            ? `${tier.threshold - progressCount} more ${kpiLabel} needed`
             : `Reward: ${tier.reward_label}`,
       }
     }),
@@ -510,7 +609,17 @@ function ProgressPage({ data, clickCount, campaigns }: {
                     {c.isGoalReached ? '✅' : '📊'}
                   </div>
                   <div className="rh-info">
-                    <div className="rh-name" style={{ fontSize: 14 }}>{c.campaignName}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                      <div className="rh-name" style={{ fontSize: 14 }}>{c.campaignName}</div>
+                      {c.referralCode && (
+                        <button
+                          onClick={() => handleCopyLink(c.referralCode, c.campaignId)}
+                          style={{ flexShrink: 0, background: 'none', border: '1px solid var(--border2)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 700, color: 'var(--emerald)', cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", transition: 'all .15s', whiteSpace: 'nowrap' }}
+                        >
+                          {copiedId === c.campaignId ? '✓ Copied!' : '📋 Copy link'}
+                        </button>
+                      )}
+                    </div>
                     <div className="rh-prog-row">
                       <div className="rh-prog-l">{c.clickCount} / {c.nextThreshold ?? '?'} clicks</div>
                       <div className="rh-prog-r">{c.isGoalReached ? `${prog}% ✓` : `${prog}%`}</div>
@@ -581,7 +690,7 @@ function SharePage({ data, referralLink, captions, onCopy, copied }: {
       <div className="two-col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="p-card">
-            <div className="p-card-hd"><div><div className="p-card-title">Your unique referral link</div><div className="p-card-sub">Every click is tracked and verified automatically</div></div></div>
+            <div className="p-card-hd"><div><div className="p-card-title">Your unique ValueShare link</div><div className="p-card-sub">Every click is tracked and verified automatically</div></div></div>
             <div className="ref-box">
               <div className="ref-label">{data.campaign.name}</div>
               <div className="ref-link-row">
@@ -613,6 +722,35 @@ function SharePage({ data, referralLink, captions, onCopy, copied }: {
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {data.campaign.flyer_image_url && (
+            <div className="p-card">
+              <div className="p-card-hd">
+                <div><div className="p-card-title">📦 Promo Pack</div><div className="p-card-sub">Download and share your campaign flyer</div></div>
+              </div>
+              <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <img src={data.campaign.flyer_image_url} alt="Campaign flyer" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', maxHeight: 220, display: 'block' }} />
+                {data.campaign.flyer_caption && (
+                  <div style={{ background: 'var(--slate)', border: '1.5px solid var(--border2)', borderRadius: 9, padding: 14, fontSize: 13, color: 'var(--ink2)', lineHeight: 1.6 }}>
+                    {data.campaign.flyer_caption}
+                  </div>
+                )}
+                <a
+                  href={data.campaign.flyer_image_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--emerald)', color: '#fff', padding: '10px 0', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: "'Cabinet Grotesk',sans-serif" }}
+                >
+                  ⬇ Download Flyer
+                </a>
+                {data.campaign.require_flyer && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#d97706', fontWeight: 600 }}>
+                    <span>⚠️</span> Please share this flyer as part of your campaign promotion
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div className="p-card">
             <div className="p-card-hd"><div className="p-card-title">Promo materials</div></div>
             <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -682,9 +820,11 @@ function LeaderboardPage({ data }: { data: NonNullable<ReturnType<typeof usePart
    MY REWARD PAGE
    ══════════════════════════════════════════ */
 
-function RewardPage({ data, clickCount }: {
+function RewardPage({ data, clickCount, progressCount, kpiLabel }: {
   data: NonNullable<ReturnType<typeof useParticipantDashboard>['data']>
   clickCount: number
+  progressCount: number
+  kpiLabel: string
 }) {
   function handleAccess(unlock: RewardUnlock & { tier: RewardTier }) {
     if (unlock.tier.reward_type === 'file' && unlock.tier.reward_file_path) {
@@ -755,22 +895,22 @@ function RewardPage({ data, clickCount }: {
             const unlock = data.unlockedRewards.find((u) => u.tier_id === tier.id)
             if (unlock) return null
 
-            const prog = getProgressPercentage(clickCount, tier.threshold)
-            const remaining = Math.max(0, tier.threshold - clickCount)
+            const prog = getProgressPercentage(progressCount, tier.threshold)
+            const remaining = Math.max(0, tier.threshold - progressCount)
 
             return (
               <div key={tier.id} className="p-card">
                 <div className="p-card-hd"><div className="p-card-title">{tier.label}</div></div>
                 <div className="rh-locked">
                   <div className="rh-l-ico">🔒</div>
-                  <div className="rh-l-text">You need <strong>{remaining} more click{remaining !== 1 ? 's' : ''}</strong> to unlock {tier.reward_label}. You&apos;re at {clickCount}/{tier.threshold}.</div>
+                  <div className="rh-l-text">You need <strong>{remaining} more {kpiLabel}</strong> to unlock {tier.reward_label}. You&apos;re at {progressCount}/{tier.threshold}.</div>
                 </div>
                 <div className="reward-hero" style={{ padding: '12px 22px 16px' }}>
                   <div className="rh-icon" style={{ width: 44, height: 44, fontSize: 22 }}>🔒</div>
                   <div className="rh-info">
                     <div className="rh-name" style={{ fontSize: 14 }}>{tier.reward_label}</div>
                     <div className="rh-prog-row">
-                      <div className="rh-prog-l">{clickCount} / {tier.threshold} clicks</div>
+                      <div className="rh-prog-l">{progressCount} / {tier.threshold} {kpiLabel}</div>
                       <div className="rh-prog-r">{prog}%</div>
                     </div>
                     <div className="rh-bar"><div className="rh-fill" style={{ width: `${prog}%`, background: 'var(--amber, #d97706)' }} /></div>

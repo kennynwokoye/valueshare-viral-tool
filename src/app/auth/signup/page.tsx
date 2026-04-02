@@ -46,6 +46,10 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [emailOk, setEmailOk] = useState(true)
+  const [resendError, setResendError] = useState('')
 
   const score = getPasswordScore(password)
   const strengthColor = getStrengthColor(score)
@@ -91,8 +95,41 @@ export default function SignupPage() {
       return
     }
 
+    // Send confirmation email via our own Zeptomail SMTP instead of relying on Supabase's built-in email
+    try {
+      const emailRes = await fetch('/api/auth/send-creator-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!emailRes.ok) setEmailOk(false)
+    } catch { setEmailOk(false) }
+
     setSuccess(true)
     setLoading(false)
+  }
+
+  async function handleResend() {
+    setResending(true)
+    setResent(false)
+    setResendError('')
+    try {
+      const res = await fetch('/api/auth/send-creator-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (res.ok) {
+        setResent(true)
+        setEmailOk(true)
+      } else {
+        setResendError('Failed to send — please try again or contact support.')
+      }
+    } catch {
+      setResendError('Failed to send — please try again or contact support.')
+    } finally {
+      setResending(false)
+    }
   }
 
   async function handleGoogle() {
@@ -111,23 +148,53 @@ export default function SignupPage() {
         <div className="auth-success-icon">✉</div>
         <div className="auth-title" style={{ textAlign: 'center' }}>Check your inbox</div>
         <p className="auth-sub" style={{ textAlign: 'center' }}>
-          We sent a confirmation link to{' '}
-          <span style={{ color: 'var(--coral)', fontWeight: 700 }}>{email}</span>.
-          Click the link to verify your account.
+          {emailOk ? (
+            <>We sent a confirmation link to{' '}
+            <span style={{ color: 'var(--coral)', fontWeight: 700 }}>{email}</span>.
+            Click the link to verify your account.</>
+          ) : (
+            <>We could not send the confirmation email to{' '}
+            <span style={{ color: 'var(--coral)', fontWeight: 700 }}>{email}</span>.
+            Please use the Resend button below.</>
+          )}
         </p>
-        <p className="auth-terms">
-          Didn&apos;t get the email? Check your spam folder or{' '}
+        {!emailOk && (
+          <div className="auth-error" style={{ marginTop: 8 }}>
+            <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
+            Confirmation email could not be sent. Try resending or check your email address.
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
           <button
             type="button"
-            onClick={() => {
-              setSuccess(false)
-              setFirstName(''); setLastName(''); setEmail(''); setPassword('')
-            }}
-            style={{ background: 'none', border: 'none', color: 'var(--coral)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
+            onClick={handleResend}
+            disabled={resending}
+            className="auth-btn"
+            style={{ background: resent ? 'var(--vs-success,#059669)' : undefined }}
           >
-            try again
+            {resending ? <><span className="auth-spinner" /> Sending…</> : resent ? '✓ Email sent!' : 'Resend confirmation email'}
           </button>
-        </p>
+          {resendError && (
+            <div className="auth-error">
+              <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
+              {resendError}
+            </div>
+          )}
+          <p className="auth-terms" style={{ textAlign: 'center', marginTop: 4 }}>
+            Wrong email?{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setSuccess(false)
+                setFirstName(''); setLastName(''); setEmail(''); setPassword('')
+                setResent(false)
+              }}
+              style={{ background: 'none', border: 'none', color: 'var(--coral)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
+            >
+              Start over
+            </button>
+          </p>
+        </div>
       </div>
     )
   }

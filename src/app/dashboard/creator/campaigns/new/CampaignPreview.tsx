@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { getLandingTemplate, mergeLandingConfig, getVideoEmbedUrl, getDefaultSectionOrder } from '@/lib/campaign-helpers'
 import type { CreateCampaignPayload, LandingConfig, LandingTemplate, HowItWorksStep } from '@/types'
 
@@ -55,6 +55,25 @@ export default function CampaignPreview({ data }: Props) {
   const howItWorks = (data.how_it_works ?? []) as HowItWorksStep[]
   const kpiLabel = data.kpi_type === 'registrations' ? 'signups' : (data.kpi_type || 'clicks')
 
+  /* Live countdown */
+  const [countdown, setCountdown] = useState<{ d: string; h: string; m: string; s: string } | null>(null)
+  useEffect(() => {
+    if (!data.deadline) return
+    const tick = () => {
+      const diff = new Date(data.deadline!).getTime() - Date.now()
+      if (diff <= 0) { setCountdown(null); return }
+      setCountdown({
+        d: String(Math.floor(diff / 86400000)).padStart(2, '0'),
+        h: String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0'),
+        m: String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'),
+        s: String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'),
+      })
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [data.deadline])
+
   /* Video */
   const videoEmbedUrl = getVideoEmbedUrl(config.videoUrl ?? '')
 
@@ -77,7 +96,7 @@ export default function CampaignPreview({ data }: Props) {
   /* Show/hide */
   const showBenefits = config.showBenefits && (data.benefits?.length ?? 0) > 0 && data.benefits!.some((b) => b.trim())
   const showHowItWorks = config.showHowItWorks && howItWorks.length > 0
-  const showSocialProof = config.showSocialProof && false // preview: never show count
+  const showSocialProof = config.showSocialProof && (data.social_proof_visible ?? true)
   const showCountdown = config.showCountdown && !!data.show_countdown && !!data.deadline
 
   /* Section order */
@@ -108,13 +127,39 @@ export default function CampaignPreview({ data }: Props) {
     </header>
   )
 
+  const isHeroBg = config.heroImageMode === 'background' && !!data.hero_image_url
+  const heroHeightMap: Record<string, string> = { sm: '280px', md: '420px', lg: '560px', full: '100vh' }
+  const overlayOpacityMap: Record<string, number> = { light: 0.35, medium: 0.55, dark: 0.75 }
+  const overlayOpacity = overlayOpacityMap[config.heroOverlayOpacity || 'medium'] ?? 0.55
+
   const heroFixed = (
-    <section className="cl-hero">
-      {config.tagline && (
-        <span className="cl-hero-tag">{config.tagline}</span>
+    <section
+      className={`cl-hero${isHeroBg ? ' cl-hero--image' : ''}`}
+      style={isHeroBg ? {
+        backgroundImage: `url(${data.hero_image_url})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        minHeight: heroHeightMap[config.heroImageHeight || 'md'],
+      } : undefined}
+    >
+      {isHeroBg && (
+        <div className="cl-hero-overlay" style={{ background: `linear-gradient(to top, rgba(0,0,0,${overlayOpacity}) 0%, rgba(0,0,0,${overlayOpacity * 0.4}) 60%, transparent 100%)` }} />
       )}
-      <h1 className="cl-headline">{data.headline || 'Your Headline Here'}</h1>
-      {showSocialProof && null}
+      <div className="cl-hero-inner">
+        {config.tagline && (
+          <span className="cl-hero-tag">{config.tagline}</span>
+        )}
+        <span className="cl-trust-badge">&#x2713; No payment required</span>
+        <h1 className={`cl-headline cl-headline--${config.headlineFontSize || 'lg'} cl-headline--mob-${config.headlineFontSizeMobile || 'md'}`}>{data.headline || 'Your Headline Here'}</h1>
+        {showSocialProof && (
+          <div className="cl-social-proof">
+            <span className="cl-social-fire">🔥</span> Join the waitlist
+            {mainReward && (
+              <span className="cl-social-goal"> &middot; Goal: {mainReward.threshold} {kpiLabel}</span>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   )
 
@@ -172,7 +217,7 @@ export default function CampaignPreview({ data }: Props) {
 
   const benefitsSection = showBenefits ? (
     <section className="cl-benefits">
-      <h2 className="cl-section-title">What You Get</h2>
+      <h2 className="cl-section-title">{config.benefitsTitle || 'What You Get'}</h2>
       <div className="cl-benefits-grid">
         {data.benefits!.filter((b) => b.trim()).map((b, i) => (
           <div key={i} className="cl-benefit-card">
@@ -186,7 +231,7 @@ export default function CampaignPreview({ data }: Props) {
 
   const howSection = showHowItWorks ? (
     <section className="cl-how">
-      <h2 className="cl-section-title">How It Works</h2>
+      <h2 className="cl-section-title">{config.howItWorksTitle || 'How It Works'}</h2>
       <div className="cl-how-grid">
         {howItWorks.map((s, i) => (
           <div key={i} className="cl-how-card">
@@ -267,22 +312,52 @@ export default function CampaignPreview({ data }: Props) {
 
   const countdownSection = showCountdown ? (
     <div className="cl-countdown">
-      <div className="cl-countdown-label">Offer ends in</div>
-      <div className="cl-countdown-units">
-        <div className="cl-countdown-unit"><span className="cl-countdown-num">07</span><span className="cl-countdown-unit-label">days</span></div>
-        <div className="cl-countdown-unit"><span className="cl-countdown-num">12</span><span className="cl-countdown-unit-label">hrs</span></div>
-        <div className="cl-countdown-unit"><span className="cl-countdown-num">30</span><span className="cl-countdown-unit-label">min</span></div>
-        <div className="cl-countdown-unit"><span className="cl-countdown-num">00</span><span className="cl-countdown-unit-label">sec</span></div>
-      </div>
+      {countdown === null ? (
+        <div className="cl-countdown-ended">&#x23F0; This offer has ended</div>
+      ) : (
+        <>
+          <div className="cl-countdown-label">&#x23F0; Offer ends in</div>
+          <div className="cl-countdown-boxes">
+            <div className="cl-countdown-box">
+              <div className="cl-countdown-num">{countdown.d}</div>
+              <div className="cl-countdown-unit">days</div>
+            </div>
+            <div className="cl-countdown-sep">:</div>
+            <div className="cl-countdown-box">
+              <div className="cl-countdown-num">{countdown.h}</div>
+              <div className="cl-countdown-unit">hrs</div>
+            </div>
+            <div className="cl-countdown-sep">:</div>
+            <div className="cl-countdown-box">
+              <div className="cl-countdown-num">{countdown.m}</div>
+              <div className="cl-countdown-unit">min</div>
+            </div>
+            <div className="cl-countdown-sep">:</div>
+            <div className="cl-countdown-box">
+              <div className="cl-countdown-num">{countdown.s}</div>
+              <div className="cl-countdown-unit">sec</div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   ) : null
 
-  /* Static join form mockup */
-  const joinSection = (
-    <div id="join-preview" className="cl-join-wrap">
+  /* Static join form mockup — shared between regular and split layouts */
+  const joinInner = (
+    <>
+      <div className="cl-safety-block">
+        <span className="cl-safety-icon">&#x1F512;</span>
+        <strong>100% Safe &amp; Secure</strong>
+        <div className="cl-safety-grid">
+          <span>No payment required</span>
+          <span>Your email stays private</span>
+          <span>Instant access</span>
+          <span>Trusted platform</span>
+        </div>
+      </div>
       <p className="cl-join-wrap-title">Get your referral link</p>
       <p className="cl-join-wrap-sub">You&apos;ll be sharing in under 60 seconds</p>
-      {/* Static mockup — no actual form */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', pointerEvents: 'none' }}>
         <div style={{ padding: '10px 14px', border: '1.5px solid rgba(var(--cl-accent-rgb),0.3)', borderRadius: '9px', fontSize: '14px', color: 'var(--cl-text-muted)', background: 'var(--cl-surface)' }}>
           your@email.com
@@ -292,8 +367,32 @@ export default function CampaignPreview({ data }: Props) {
         </div>
       </div>
       <p className="cl-join-trust">&#x1F512; We won&apos;t spam you. Unsubscribe anytime.</p>
+    </>
+  )
+
+  const joinSection = (
+    <div id="join-preview" className="cl-join-wrap">
+      {joinInner}
     </div>
   )
+
+  const promoPackSection = data.flyer_image_url ? (
+    <div style={{ padding: '12px 0' }}>
+      <img src={data.flyer_image_url} alt="Campaign flyer" style={{ width: '100%', borderRadius: 8, marginBottom: 10, display: 'block' }} />
+      {data.flyer_caption && (
+        <p style={{ fontSize: 13, color: 'var(--cl-text-muted)', lineHeight: 1.5, margin: '0 0 10px' }}>{data.flyer_caption}</p>
+      )}
+      <div style={{ padding: '9px 0', textAlign: 'center', background: 'var(--cl-accent)', color: '#fff', borderRadius: 7, fontSize: 13, fontWeight: 700 }}>
+        📦 Download Promo Pack
+      </div>
+    </div>
+  ) : null
+
+  const effectiveSectionOrder = isHeroBg
+    ? sectionOrder.filter((k) => k !== 'hero_image')
+    : sectionOrder
+
+  const hiddenOnMobile = config.hiddenOnMobile || []
 
   const sectionMap: Record<string, React.ReactNode> = {
     hero_image: heroImageSection,
@@ -310,11 +409,20 @@ export default function CampaignPreview({ data }: Props) {
     tiers: tiersSection,
     countdown: countdownSection,
     join_form: joinSection,
+    promo_pack: promoPackSection,
+  }
+
+  function renderSection(key: string) {
+    const node = sectionMap[key]
+    if (!node) return null
+    return hiddenOnMobile.includes(key)
+      ? <div key={key} className="cl-hide-mobile">{node}</div>
+      : <React.Fragment key={key}>{node}</React.Fragment>
   }
 
   /* Split layout */
   if (config.formPosition === 'right') {
-    const leftSections = sectionOrder.filter((k) => k !== 'join_form')
+    const leftSections = effectiveSectionOrder.filter((k) => k !== 'join_form')
     return (
       <div className={`cl-page ${templateDef.layoutClass}`}>
         <style dangerouslySetInnerHTML={{ __html: cssVars }} />
@@ -323,22 +431,10 @@ export default function CampaignPreview({ data }: Props) {
           {heroFixed}
           <div className="cl-split">
             <div className="cl-split-content">
-              {leftSections.map((key) => (
-                <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
-              ))}
+              {leftSections.map((key) => renderSection(key))}
             </div>
             <div id="join-preview" className="cl-split-form">
-              <p className="cl-join-wrap-title">Get your referral link</p>
-              <p className="cl-join-wrap-sub">You&apos;ll be sharing in under 60 seconds</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', pointerEvents: 'none' }}>
-                <div style={{ padding: '10px 14px', border: '1.5px solid rgba(var(--cl-accent-rgb),0.3)', borderRadius: '9px', fontSize: '14px', color: 'var(--cl-text-muted)', background: 'var(--cl-surface)' }}>
-                  your@email.com
-                </div>
-                <div style={{ padding: '12px 0', textAlign: 'center', background: 'var(--cl-accent)', color: '#fff', borderRadius: '9px', fontWeight: 700, fontSize: '15px' }}>
-                  {config.ctaText || 'Get My Referral Link →'}
-                </div>
-              </div>
-              <p className="cl-join-trust">&#x1F512; We won&apos;t spam you. Unsubscribe anytime.</p>
+              {joinInner}
             </div>
           </div>
           {footer}
@@ -353,9 +449,7 @@ export default function CampaignPreview({ data }: Props) {
       <div className="cl-container">
         {header}
         {heroFixed}
-        {sectionOrder.map((key) => (
-          <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
-        ))}
+        {effectiveSectionOrder.map((key) => renderSection(key))}
         {footer}
       </div>
     </div>

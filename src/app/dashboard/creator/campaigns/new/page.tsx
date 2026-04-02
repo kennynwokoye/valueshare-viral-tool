@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buildHowItWorksSteps } from '@/lib/campaign-helpers'
+import { useAutosaveCampaign, type AutosaveStatus } from '@/lib/hooks/useAutosaveCampaign'
+import { loadLocal, clearLocal, type LocalDraft } from '@/lib/campaignDraftStorage'
 import type {
   CreateCampaignPayload,
   CreateRewardTierPayload,
@@ -62,12 +64,23 @@ export default function CampaignWizardPage() {
   const [draftId, setDraftId] = useState<string | null>(editId)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const [draftSaved, setDraftSaved] = useState(false)
-  const [published, setPublished] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [loading, setLoading] = useState(!!editId)
+  const [loadError, setLoadError] = useState(false)
+  const [recoveryDraft, setRecoveryDraft] = useState<LocalDraft | null>(null)
 
-  /* Load existing campaign for edit mode */
+  /* ── Autosave hook ─────────────────────────────────── */
+  // Enabled only while in editor screen and not in the initial loading state
+  const autosaveEnabled = screen === 'editor' && !loading
+
+  const autosaveStatus: AutosaveStatus = useAutosaveCampaign({
+    data,
+    draftId,
+    enabled: autosaveEnabled,
+    onSaved: () => { if (draftId) clearLocal(draftId) },
+  })
+
+  /* ── Load existing campaign (edit mode) ────────────── */
   useEffect(() => {
     if (!editId) return
     fetch(`/api/campaigns/${editId}`)
@@ -104,12 +117,20 @@ export default function CampaignWizardPage() {
               }))
             : [{ ...EMPTY_TIER }],
         })
+
+        // Check for a more recent local draft (unsaved changes from a previous session)
+        const local = loadLocal(editId)
+        const dbUpdatedAt = campaign.updated_at ? new Date(campaign.updated_at).getTime() : 0
+        if (local && local.savedAt > dbUpdatedAt + 30_000) {
+          setRecoveryDraft(local)
+        }
+
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => { setLoading(false); setLoadError(true) })
   }, [editId])
 
-  /* Pre-fill creator name for new campaigns */
+  /* ── Pre-fill creator name for new campaigns ───────── */
   useEffect(() => {
     if (editId) return
     const supabase = createClient()
@@ -120,11 +141,67 @@ export default function CampaignWizardPage() {
     })
   }, [editId])
 
+  /* ── Unsaved-changes guard (beforeunload) ──────────── */
+  useEffect(() => {
+    if (!autosaveStatus.isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [autosaveStatus.isDirty])
+
+  /* ── Update helper ─────────────────────────────────── */
   const update = useCallback((u: Partial<CreateCampaignPayload>) => {
     setData((d) => ({ ...d, ...u }))
-    setDraftSaved(false)
+    setSubmitError(null)
   }, [])
 
+  /* ── Recovery actions ──────────────────────────────── */
+  const handleRestore = useCallback(() => {
+    if (!recoveryDraft) return
+    setData(recoveryDraft.data)
+    setRecoveryDraft(null)
+  }, [recoveryDraft])
+
+  const handleDiscardRecovery = useCallback(() => {
+    if (draftId) clearLocal(draftId)
+    setRecoveryDraft(null)
+  }, [draftId])
+
+  /* ── Auto-create draft when entering editor ────────── */
+  const handleStartBuilding = useCallback(async () => {
+    setScreen('editor')
+    if (draftId) return // already has an ID (edit mode)
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          kpi_type: data.kpi_type || 'clicks',
+          headline: data.name, // placeholder — user will update in editor
+          destination_url: 'https://', // placeholder — passes non-empty validation
+          reward_tiers: [{ ...EMPTY_TIER }],
+        }),
+      })
+      if (res.ok) {
+        const created = await res.json()
+        setDraftId(created.id)
+        // Update URL so refresh/back button still works
+        window.history.replaceState(
+          {},
+          '',
+          `/dashboard/creator/campaigns/new?edit=${created.id}`
+        )
+      }
+    } catch {
+      // Non-critical — autosave will create the draft on next save
+    }
+  }, [data, draftId])
+
+  /* ── Manual save (bypasses autosave debounce) ──────── */
   const saveDraft = useCallback(async () => {
     setSaving(true)
     setSubmitError(null)
@@ -150,9 +227,14 @@ export default function CampaignWizardPage() {
         if (!res.ok) throw new Error((await res.json()).error || 'Failed to save')
         const created = await res.json()
         setDraftId(created.id)
+        window.history.replaceState(
+          {},
+          '',
+          `/dashboard/creator/campaigns/new?edit=${created.id}`
+        )
       }
-      setDraftSaved(true)
-      setTimeout(() => setDraftSaved(false), 3000)
+      // Clear localStorage since DB is now in sync
+      if (draftId) clearLocal(draftId)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -160,6 +242,7 @@ export default function CampaignWizardPage() {
     }
   }, [data, draftId])
 
+  /* ── Publish ───────────────────────────────────────── */
   const handlePublish = useCallback(async (slug: string) => {
     setPublishing(true)
     setSubmitError(null)
@@ -188,7 +271,7 @@ export default function CampaignWizardPage() {
         campaignId = created.id
         setDraftId(campaignId)
       }
-      /* Set custom slug + status to active */
+      /* Set custom slug + activate */
       await fetch(`/api/campaigns/${campaignId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -199,7 +282,8 @@ export default function CampaignWizardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'active' }),
       })
-      setPublished(true)
+      // Clear localStorage on successful publish
+      if (campaignId) clearLocal(campaignId)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Publish failed')
     } finally {
@@ -207,30 +291,21 @@ export default function CampaignWizardPage() {
     }
   }, [data, draftId])
 
-  if (loading) {
+  /* ── Render ────────────────────────────────────────── */
+
+  if (loadError) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--ink3)', fontSize: 14 }}>
-        Loading campaign...
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
+        <p style={{ color: '#ef4444', fontSize: 14 }}>Failed to load campaign.</p>
+        <button className="vs-btn" onClick={() => router.back()}>← Go Back</button>
       </div>
     )
   }
 
-  if (published) {
-    const campaignSlug = slugify(data.name || '')
+  if (loading) {
     return (
-      <div className="cw-success">
-        <div className="cw-success-ico">🎉</div>
-        <div className="cw-success-title">Campaign Published!</div>
-        <div className="cw-success-sub">Your campaign is now live and ready to receive participants.</div>
-        <div className="cw-success-url-box">
-          <div className="cw-success-url-label">Your campaign is live at:</div>
-          <div className="cw-success-url">valueshare.me/c/{campaignSlug}</div>
-        </div>
-        <div className="cw-success-actions">
-          <button className="vs-btn vs-btn-primary" onClick={() => router.push('/dashboard/creator')}>
-            ← Back to Dashboard
-          </button>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--ink3)', fontSize: 14 }}>
+        Loading campaign...
       </div>
     )
   }
@@ -246,7 +321,10 @@ export default function CampaignWizardPage() {
         saving={saving}
         publishing={publishing}
         submitError={submitError}
-        draftSaved={draftSaved}
+        autosaveStatus={autosaveStatus}
+        recoveryDraft={recoveryDraft}
+        onRestore={handleRestore}
+        onDiscardRecovery={handleDiscardRecovery}
         editId={editId}
       />
     )
@@ -257,13 +335,43 @@ export default function CampaignWizardPage() {
     <GoalScreen
       data={data}
       update={update}
-      onStart={() => setScreen('editor')}
+      onStart={handleStartBuilding}
       onCancel={() => router.push('/dashboard/creator')}
     />
   )
 }
 
 /* ── Goal Screen Component ───────────────────────────── */
+
+const KPI_OPTIONS = [
+  {
+    value: 'clicks' as const,
+    icon: '🔗',
+    label: 'Clicks',
+    difficulty: 'Easy',
+    desc: 'Track unique visitors to your link',
+    example: 'Get 50 unique clicks',
+    rec: '30–100 clicks for most prizes',
+  },
+  {
+    value: 'registrations' as const,
+    icon: '📋',
+    label: 'Signups',
+    difficulty: 'Medium',
+    desc: 'Track people who register or sign up',
+    example: 'Get 30 people to sign up',
+    rec: '15–50 signups (about 40% of clicks)',
+  },
+  {
+    value: 'purchases' as const,
+    icon: '💳',
+    label: 'Purchases',
+    difficulty: 'Hard',
+    desc: 'Track completed purchases or payments',
+    example: 'Get 10 people to buy',
+    rec: '5–20 purchases (about 10% of clicks)',
+  },
+]
 
 function GoalScreen({
   data,
@@ -300,29 +408,33 @@ function GoalScreen({
         {/* KPI Type */}
         <div className="ve-goal-field">
           <label className="ve-goal-label">Campaign Goal</label>
-          <div className="ve-goal-kpi">
-            <button
-              className={`ve-goal-kpi-opt${data.kpi_type === 'clicks' ? ' active' : ''}`}
-              onClick={() => update({ kpi_type: 'clicks' })}
-            >
-              <span className="ve-goal-kpi-icon">🔗</span>
-              Clicks
-            </button>
-            <button
-              className={`ve-goal-kpi-opt${data.kpi_type === 'registrations' ? ' active' : ''}`}
-              onClick={() => update({ kpi_type: 'registrations' })}
-            >
-              <span className="ve-goal-kpi-icon">📋</span>
-              Signups
-            </button>
-            <button
-              className={`ve-goal-kpi-opt${data.kpi_type === 'purchases' ? ' active' : ''}`}
-              onClick={() => update({ kpi_type: 'purchases' })}
-            >
-              <span className="ve-goal-kpi-icon">💳</span>
-              Purchases
-            </button>
+          <div className="ve-goal-kpi-cards">
+            {KPI_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`ve-goal-kpi-card${data.kpi_type === opt.value ? ' active' : ''}`}
+                onClick={() => update({ kpi_type: opt.value })}
+              >
+                <span className="ve-goal-kpi-card-icon">{opt.icon}</span>
+                <div className="ve-goal-kpi-card-body">
+                  <span className="ve-goal-kpi-card-name">{opt.label}</span>
+                  <span className="ve-goal-kpi-card-desc">{opt.desc}</span>
+                </div>
+                <span className={`ve-goal-kpi-badge ve-goal-kpi-badge--${opt.difficulty}`}>
+                  {opt.difficulty}
+                </span>
+              </button>
+            ))}
           </div>
+          {data.kpi_type && (() => {
+            const opt = KPI_OPTIONS.find((o) => o.value === data.kpi_type)!
+            return (
+              <div className="ve-goal-kpi-info">
+                <p className="ve-goal-kpi-info-example">Example: &ldquo;{opt.example}&rdquo;</p>
+                <p className="ve-goal-kpi-info-rec">Recommended: {opt.rec}</p>
+              </div>
+            )
+          })()}
         </div>
 
         <button

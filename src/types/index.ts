@@ -1,5 +1,5 @@
 // ── ENUMS ──────────────────────────────────────────────
-export type UserRole = 'creator' | 'participant' | 'admin'
+export type UserRole = 'creator' | 'participant' | 'admin' | 'both'
 export type CampaignStatus = 'draft' | 'active' | 'paused' | 'ended'
 export type KpiType = 'clicks' | 'registrations' | 'purchases' | 'shares'
 export type RewardType = 'file' | 'video_url' | 'call_booking' | 'external_url'
@@ -27,6 +27,24 @@ export interface LandingConfig {
   sectionOrder?: string[]  // Ordered array of section keys; undefined = default order
   faqs?: { question: string; answer: string }[]  // FAQ entries (max 8)
   creatorBio?: string   // Bio text for Creator Bio section
+  // Section customisation
+  benefitsTitle?: string    // Heading for Benefits section (default: "What You Get")
+  howItWorksTitle?: string  // Heading for How It Works section (default: "How It Works")
+  // Widget customisation
+  widgetHeadline?: string       // Widget headline (default: campaign name)
+  widgetSubheadline?: string    // Widget sub-headline
+  widgetPrimaryColor?: string   // Widget accent color (default: matches accentColor)
+  widgetDelay?: number          // Popup delay in seconds (default: 5)
+  widgetPosition?: 'inline' | 'bottom-right' | 'top-banner'
+  headlineFontSize?: 'sm' | 'md' | 'lg' | 'xl'
+  // Hero image display mode
+  heroImageMode?: 'below' | 'background'
+  heroImageHeight?: 'sm' | 'md' | 'lg' | 'full'
+  heroOverlayOpacity?: 'light' | 'medium' | 'dark'
+  // Mobile typography
+  headlineFontSizeMobile?: 'xs' | 'sm' | 'md' | 'lg'
+  // Mobile section visibility
+  hiddenOnMobile?: string[]
 }
 
 export interface LandingTemplateDefinition {
@@ -89,6 +107,11 @@ export interface Campaign {
   marketplace_listed: boolean
   landing_template: LandingTemplate
   landing_config: LandingConfig
+  cost_per_lead: number | null
+  cost_per_lead_currency: string
+  flyer_image_url: string | null
+  flyer_caption: string | null
+  require_flyer: boolean
   created_at: string
   updated_at: string
 }
@@ -128,6 +151,7 @@ export interface Participant {
   otp_code: string | null
   otp_expires_at: string | null
   click_count: number
+  conversion_count: number
   joined_at: string
   last_active_at: string
 }
@@ -256,6 +280,9 @@ export interface CreateCampaignPayload {
   reward_tiers: CreateRewardTierPayload[]
   landing_template?: LandingTemplate
   landing_config?: LandingConfig
+  flyer_image_url?: string
+  flyer_caption?: string
+  require_flyer?: boolean
 }
 
 export interface CreateRewardTierPayload {
@@ -271,6 +298,8 @@ export interface CreateRewardTierPayload {
 
 export interface UpdateCampaignPayload extends Partial<CreateCampaignPayload> {
   marketplace_listed?: boolean
+  cost_per_lead?: number | null
+  cost_per_lead_currency?: string
 }
 
 export interface MarketplaceCampaign {
@@ -363,6 +392,7 @@ export interface CampaignSwitcherItem {
   clickCount: number
   nextThreshold: number | null
   isGoalReached: boolean
+  referralCode: string
 }
 
 // ── CREATOR DASHBOARD ─────────────────────────────────

@@ -6,6 +6,7 @@ import type { RewardTier, HowItWorksStep, LandingConfig, LandingTemplate } from 
 import { getLandingTemplate, mergeLandingConfig, getVideoEmbedUrl, getDefaultSectionOrder } from '@/lib/campaign-helpers'
 import JoinForm from './JoinForm'
 import CountdownTimer from './CountdownTimer'
+import LiveJoinCount from '@/components/LiveJoinCount'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -162,21 +163,35 @@ export default async function CampaignPage({ params }: Props) {
     </header>
   )
 
-  /* Fixed hero: tagline + headline + social proof only */
+  /* Fixed hero: tagline + trust badge + headline + social proof only */
+  const isHeroBg = config.heroImageMode === 'background' && !!campaign.hero_image_url
+  const heroHeightMap: Record<string, string> = { sm: '280px', md: '420px', lg: '560px', full: '100vh' }
+  const overlayOpacityMap: Record<string, number> = { light: 0.35, medium: 0.55, dark: 0.75 }
+  const overlayOpacity = overlayOpacityMap[config.heroOverlayOpacity || 'medium'] ?? 0.55
+
   const heroFixed = (
-    <section className="cl-hero">
-      {config.tagline && (
-        <span className="cl-hero-tag">{config.tagline}</span>
+    <section
+      className={`cl-hero${isHeroBg ? ' cl-hero--image' : ''}`}
+      style={isHeroBg ? {
+        backgroundImage: `url(${campaign.hero_image_url})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        minHeight: heroHeightMap[config.heroImageHeight || 'md'],
+      } : undefined}
+    >
+      {isHeroBg && (
+        <div className="cl-hero-overlay" style={{ background: `linear-gradient(to top, rgba(0,0,0,${overlayOpacity}) 0%, rgba(0,0,0,${overlayOpacity * 0.4}) 60%, transparent 100%)` }} />
       )}
-      <h1 className="cl-headline">{campaign.headline}</h1>
-      {showSocialProof && (
-        <div className="cl-social-proof">
-          <span className="cl-social-fire">&#x1F525;</span>{' '}
-          {campaign.total_participants}{' '}
-          {campaign.total_participants === 1 ? 'person has' : 'people have'}{' '}
-          already joined
-        </div>
-      )}
+      <div className="cl-hero-inner">
+        {config.tagline && (
+          <span className="cl-hero-tag">{config.tagline}</span>
+        )}
+        <span className="cl-trust-badge">&#x2713; No payment required</span>
+        <h1 className={`cl-headline cl-headline--${config.headlineFontSize || 'lg'} cl-headline--mob-${config.headlineFontSizeMobile || 'md'}`}>{campaign.headline}</h1>
+        {showSocialProof && (
+          <LiveJoinCount campaignId={campaign.id} initialCount={campaign.total_participants} />
+        )}
+      </div>
     </section>
   )
 
@@ -348,12 +363,34 @@ export default async function CampaignPage({ params }: Props) {
 
   const joinSection = (
     <div id="join" className="cl-join-wrap">
+      <div className="cl-safety-block">
+        <span className="cl-safety-icon">&#x1F512;</span>
+        <strong>100% Safe &amp; Secure</strong>
+        <div className="cl-safety-grid">
+          <span>No payment required</span>
+          <span>Your email stays private</span>
+          <span>Instant access</span>
+          <span>Trusted platform</span>
+        </div>
+      </div>
       <p className="cl-join-wrap-title">{joinTitle}</p>
       <p className="cl-join-wrap-sub">You&apos;ll be sharing in under 60 seconds</p>
       <JoinForm campaignId={campaign.id} ctaText={config.ctaText} />
       <p className="cl-join-trust">&#x1F512; We won&apos;t spam you. Unsubscribe anytime.</p>
     </div>
   )
+
+  const promoPackSection = campaign.flyer_image_url ? (
+    <div style={{ padding: '12px 0' }}>
+      <img src={campaign.flyer_image_url} alt="Campaign flyer" style={{ width: '100%', borderRadius: 8, marginBottom: 10, display: 'block' }} />
+      {campaign.flyer_caption && (
+        <p style={{ fontSize: 13, color: 'var(--cl-text-muted)', lineHeight: 1.5, margin: '0 0 10px' }}>{campaign.flyer_caption}</p>
+      )}
+      <div style={{ padding: '9px 0', textAlign: 'center', background: 'var(--cl-accent)', color: '#fff', borderRadius: 7, fontSize: 13, fontWeight: 700 }}>
+        📦 Download Promo Pack
+      </div>
+    </div>
+  ) : null
 
   /* Section map */
   const sectionMap: Record<string, React.ReactNode> = {
@@ -371,11 +408,27 @@ export default async function CampaignPage({ params }: Props) {
     tiers: tiersSection,
     countdown: countdownSection,
     join_form: joinSection,
+    promo_pack: promoPackSection,
+  }
+
+  /* When hero is used as background, skip hero_image in section list (already shown in header) */
+  const effectiveSectionOrder = isHeroBg
+    ? sectionOrder.filter((k) => k !== 'hero_image')
+    : sectionOrder
+
+  const hiddenOnMobile = config.hiddenOnMobile || []
+
+  function renderSection(key: string) {
+    const node = sectionMap[key]
+    if (!node) return null
+    return hiddenOnMobile.includes(key)
+      ? <div key={key} className="cl-hide-mobile">{node}</div>
+      : <React.Fragment key={key}>{node}</React.Fragment>
   }
 
   /* ── Conference: split layout (form on right) ────── */
   if (config.formPosition === 'right') {
-    const leftSections = sectionOrder.filter((k) => k !== 'join_form')
+    const leftSections = effectiveSectionOrder.filter((k) => k !== 'join_form')
     return (
       <div className={`cl-page ${templateDef.layoutClass}`}>
         <style dangerouslySetInnerHTML={{ __html: cssVars }} />
@@ -384,9 +437,7 @@ export default async function CampaignPage({ params }: Props) {
           {heroFixed}
           <div className="cl-split">
             <div className="cl-split-content">
-              {leftSections.map((key) => (
-                <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
-              ))}
+              {leftSections.map((key) => renderSection(key))}
             </div>
             <div id="join" className="cl-split-form">
               <p className="cl-join-wrap-title">{joinTitle}</p>
@@ -408,9 +459,7 @@ export default async function CampaignPage({ params }: Props) {
       <div className="cl-container">
         {header}
         {heroFixed}
-        {sectionOrder.map((key) => (
-          <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
-        ))}
+        {effectiveSectionOrder.map((key) => renderSection(key))}
         {footer}
       </div>
     </div>

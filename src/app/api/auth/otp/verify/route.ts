@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
-
 export async function POST(request: Request) {
   try {
-    const { email, code } = await request.json()
+    // Derive app URL from request origin so the magic link always uses the user's current
+    // domain — avoids build-time NEXT_PUBLIC_APP_URL inlining issues.
+    const appUrl = new URL(request.url).origin
+    const { email, code, name } = await request.json()
     const emailLower = email?.toLowerCase().trim()
 
     if (!emailLower || !code) {
@@ -56,35 +57,46 @@ export async function POST(request: Request) {
       .eq('email', emailLower)
       .single()
 
-    let isNewUser = false
+    const trimmedName = typeof name === 'string' ? name.trim() : ''
 
     if (!existingUser) {
-      isNewUser = true
       // Create auth user — triggers handle_new_auth_user which creates public.users row
       const { error: createError } = await supabase.auth.admin.createUser({
         email: emailLower,
         email_confirm: true,
-        user_metadata: { role: 'participant' },
+        user_metadata: { role: 'participant', ...(trimmedName && { name: trimmedName }) },
       })
 
-      if (createError) {
-        // Edge case: user exists in auth.users but not in public.users
-        if (!createError.message?.toLowerCase().includes('already')) {
-          return NextResponse.json(
-            { error: 'Failed to create account' },
-            { status: 500 }
-          )
-        }
-        // User exists in auth — treat as returning user for redirect purposes
-        isNewUser = false
+      if (createError && !createError.message?.toLowerCase().includes('already')) {
+        return NextResponse.json(
+          { error: 'Failed to create account' },
+          { status: 500 }
+        )
+      }
+    } else if (trimmedName) {
+      // Update name for existing user if they provided one and don't have one yet
+      const { data: authUser } = await supabase.auth.admin.getUserById(existingUser.id)
+      if (!authUser.user?.user_metadata?.name) {
+        await supabase.auth.admin.updateUserById(existingUser.id, {
+          user_metadata: { name: trimmedName },
+        })
       }
     }
 
     // Step 5: Generate magic link for session establishment
+    const campaignId = otpRecord.campaign_id
+    const next = campaignId
+      ? `/participant/onboarding?campaign=${campaignId}`
+      : '/dashboard/participant'
+
     const { data: linkData, error: linkError } =
       await supabase.auth.admin.generateLink({
         type: 'magiclink',
         email: emailLower,
+        options: {
+          // redirectTo ensures the Supabase backup email also lands on the right page
+          redirectTo: `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
       })
 
     if (linkError || !linkData) {
@@ -94,18 +106,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 6: Build redirect URL
+    // Step 6: Build our own magic link using the hashed token directly
     const tokenHash = linkData.properties.hashed_token
-    const campaignId = otpRecord.campaign_id
-
-    let next: string
-    if (isNewUser && campaignId) {
-      next = `/participant/onboarding?campaign=${campaignId}`
-    } else {
-      next = '/dashboard/participant'
-    }
-
-    const magicLink = `${APP_URL}/auth/callback?token_hash=${tokenHash}&type=magiclink&next=${encodeURIComponent(next)}`
+    const magicLink = `${appUrl}/auth/callback?token_hash=${tokenHash}&type=magiclink&next=${encodeURIComponent(next)}`
 
     return NextResponse.json({ success: true, magic_link: magicLink })
   } catch {

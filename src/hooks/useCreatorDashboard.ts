@@ -10,6 +10,8 @@ interface UseCreatorDashboardResult {
   loading: boolean
   error: string | null
   refresh: () => void
+  rewardUnlockToast: string | null
+  clearRewardUnlockToast: () => void
 }
 
 export function useCreatorDashboard(): UseCreatorDashboardResult {
@@ -17,6 +19,8 @@ export function useCreatorDashboard(): UseCreatorDashboardResult {
   const [campaigns, setCampaigns] = useState<CampaignWithTiers[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [rewardUnlockToast, setRewardUnlockToast] = useState<string | null>(null)
+  const clearRewardUnlockToast = useCallback(() => setRewardUnlockToast(null), [])
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
 
   const fetchData = useCallback(async () => {
@@ -113,6 +117,14 @@ export function useCreatorDashboard(): UseCreatorDashboardResult {
                 },
               }
             })
+            // Also update the specific campaign's participant count
+            setCampaigns((prev) =>
+              prev.map((c) =>
+                c.id === p.campaign_id
+                  ? { ...c, total_participants: c.total_participants + 1 }
+                  : c
+              )
+            )
           }
         )
         .on(
@@ -151,7 +163,38 @@ export function useCreatorDashboard(): UseCreatorDashboardResult {
                   },
                 }
               })
+              // Also update the specific campaign's click count
+              setCampaigns((prev) =>
+                prev.map((c) =>
+                  c.id === rc.campaign_id
+                    ? { ...c, total_clicks: c.total_clicks + 1 }
+                    : c
+                )
+              )
             }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'reward_unlocks',
+          },
+          (payload) => {
+            const ru = payload.new as { campaign_id: string }
+            if (!campaignIds.includes(ru.campaign_id)) return
+            setData((prev) => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                aggregate: {
+                  ...prev.aggregate,
+                  rewards_delivered: prev.aggregate.rewards_delivered + 1,
+                },
+              }
+            })
+            setRewardUnlockToast('🎉 A participant just unlocked a reward!')
           }
         )
         .subscribe()
@@ -168,5 +211,5 @@ export function useCreatorDashboard(): UseCreatorDashboardResult {
     }
   }, [campaigns])
 
-  return { data, campaigns, loading, error, refresh: fetchData }
+  return { data, campaigns, loading, error, refresh: fetchData, rewardUnlockToast, clearRewardUnlockToast }
 }

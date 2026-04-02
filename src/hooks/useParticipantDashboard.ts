@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type {
   ParticipantDashboardData,
@@ -19,6 +19,7 @@ interface UseParticipantDashboardResult {
   loading: boolean
   error: string | null
   refresh: () => void
+  patchData: (patch: Partial<ParticipantDashboardData>) => void
 }
 
 export function useParticipantDashboard(
@@ -106,6 +107,7 @@ export function useParticipantDashboard(
         otp_code: participantRow.otp_code,
         otp_expires_at: participantRow.otp_expires_at,
         click_count: participantRow.click_count,
+        conversion_count: participantRow.conversion_count,
         joined_at: participantRow.joined_at,
         last_active_at: participantRow.last_active_at,
       }
@@ -139,5 +141,9 @@ export function useParticipantDashboard(
     fetchData()
   }, [fetchData])
 
-  return { data, loading, error, refresh: fetchData }
+  const patchData = useCallback((patch: Partial<ParticipantDashboardData>) => {
+    setData((prev) => (prev ? { ...prev, ...patch } : prev))
+  }, [])
+
+  return { data, loading, error, refresh: fetchData, patchData }
 }

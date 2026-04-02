@@ -38,14 +38,27 @@ function LoginForm() {
     setLoading(true)
 
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
+      const isUnconfirmed =
+        authError.message?.toLowerCase().includes('email not confirmed') ||
+        (authError as { code?: string }).code === 'email_not_confirmed'
       setError(
-        authError.message === 'Invalid login credentials'
-          ? 'Invalid email or password. Please try again.'
-          : authError.message
+        isUnconfirmed
+          ? "Your email address hasn't been confirmed yet. Please check your inbox for the confirmation link."
+          : authError.message === 'Invalid login credentials'
+            ? 'Invalid email or password. Please try again.'
+            : authError.message
       )
+      setLoading(false)
+      return
+    }
+
+    // Hard gate: if Supabase allowed login but email is still unconfirmed (e.g. autoconfirm on)
+    if (user && !user.email_confirmed_at) {
+      await supabase.auth.signOut()
+      setError("Your email address hasn't been confirmed yet. Please check your inbox for the confirmation link.")
       setLoading(false)
       return
     }

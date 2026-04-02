@@ -41,7 +41,7 @@ export default function NotificationPanel({
         <span className="np-title">Notifications</span>
         {hasUnread && (
           <button className="np-mark-btn" onClick={onMarkAllRead}>
-            Mark all ✓
+            Mark all as read
           </button>
         )}
       </div>

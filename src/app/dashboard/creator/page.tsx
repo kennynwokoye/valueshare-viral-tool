@@ -15,6 +15,7 @@ import type {
 } from '@/types'
 import WidgetBrowser from './WidgetBrowser'
 import SettingsPage from './SettingsPage'
+import Toast from '@/components/Toast'
 
 type Page = 'overview' | 'campaigns' | 'analytics' | 'participants' | 'rewards' | 'fraud' | 'settings' | 'widgets'
 
@@ -106,6 +107,35 @@ function anonymizeEmail(email: string): string {
 const RANK_ICONS = ['🥇', '🥈', '🥉']
 const AVATAR_COLORS = ['#e85d3a', '#059669', '#7c3aed', '#0284c7', '#db2777', '#d97706', '#6b7280']
 
+const CURRENCIES = [
+  { code: 'USD', name: 'US Dollar' }, { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' }, { code: 'NGN', name: 'Nigerian Naira' },
+  { code: 'KES', name: 'Kenyan Shilling' }, { code: 'GHS', name: 'Ghanaian Cedi' },
+  { code: 'ZAR', name: 'South African Rand' }, { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'AUD', name: 'Australian Dollar' }, { code: 'INR', name: 'Indian Rupee' },
+  { code: 'XOF', name: 'W. African CFA Franc' }, { code: 'EGP', name: 'Egyptian Pound' },
+  { code: 'MAD', name: 'Moroccan Dirham' }, { code: 'TZS', name: 'Tanzanian Shilling' },
+  { code: 'UGX', name: 'Ugandan Shilling' }, { code: 'RWF', name: 'Rwandan Franc' },
+  { code: 'ETB', name: 'Ethiopian Birr' }, { code: 'ZMW', name: 'Zambian Kwacha' },
+  { code: 'JPY', name: 'Japanese Yen' }, { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'BRL', name: 'Brazilian Real' }, { code: 'MXN', name: 'Mexican Peso' },
+  { code: 'ARS', name: 'Argentine Peso' }, { code: 'COP', name: 'Colombian Peso' },
+  { code: 'CLP', name: 'Chilean Peso' }, { code: 'PEN', name: 'Peruvian Sol' },
+  { code: 'PHP', name: 'Philippine Peso' }, { code: 'IDR', name: 'Indonesian Rupiah' },
+  { code: 'MYR', name: 'Malaysian Ringgit' }, { code: 'SGD', name: 'Singapore Dollar' },
+  { code: 'THB', name: 'Thai Baht' }, { code: 'VND', name: 'Vietnamese Dong' },
+  { code: 'PKR', name: 'Pakistani Rupee' }, { code: 'BDT', name: 'Bangladeshi Taka' },
+  { code: 'HKD', name: 'Hong Kong Dollar' }, { code: 'TWD', name: 'Taiwan Dollar' },
+  { code: 'NZD', name: 'New Zealand Dollar' }, { code: 'CHF', name: 'Swiss Franc' },
+  { code: 'SEK', name: 'Swedish Krona' }, { code: 'NOK', name: 'Norwegian Krone' },
+  { code: 'DKK', name: 'Danish Krone' }, { code: 'PLN', name: 'Polish Zloty' },
+  { code: 'CZK', name: 'Czech Koruna' }, { code: 'HUF', name: 'Hungarian Forint' },
+  { code: 'RON', name: 'Romanian Leu' }, { code: 'TRY', name: 'Turkish Lira' },
+  { code: 'AED', name: 'UAE Dirham' }, { code: 'SAR', name: 'Saudi Riyal' },
+  { code: 'QAR', name: 'Qatari Riyal' }, { code: 'KWD', name: 'Kuwaiti Dinar' },
+  { code: 'ILS', name: 'Israeli Shekel' }, { code: 'UAH', name: 'Ukrainian Hryvnia' },
+]
+
 function avatarColor(index: number): string {
   return AVATAR_COLORS[index % AVATAR_COLORS.length]
 }
@@ -121,11 +151,93 @@ function LoadingSkeleton() {
   )
 }
 
+// ── Copy Link Button ──────────────────────────────────────
+function CopyLinkBtn({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    navigator.clipboard.writeText(`${window.location.origin}/c/${slug}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button className="cfc-btn sec" onClick={copy} style={{ minWidth: 110 }}>
+      {copied ? '✓ Copied!' : '🔗 Copy link'}
+    </button>
+  )
+}
+
+// ── Campaign QR Code Button ────────────────────────────────
+function CampaignQrBtn({ slug }: { slug: string }) {
+  const [open, setOpen] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+  function handleOpen() {
+    setOpen(true)
+    if (!qrDataUrl) {
+      import('qrcode').then((QRCode) => {
+        QRCode.toDataURL(`${window.location.origin}/c/${slug}`, { width: 240, margin: 2 })
+          .then(setQrDataUrl)
+          .catch(() => {})
+      }).catch(() => {})
+    }
+  }
+
+  return (
+    <>
+      <button className="cfc-btn sec" onClick={handleOpen}>QR Code</button>
+      {open && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setOpen(false)}
+        >
+          <div
+            style={{ background: 'var(--vs-bg)', borderRadius: 16, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, minWidth: 280 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 700, fontSize: 16 }}>Campaign QR Code</div>
+            <div style={{ fontSize: 13, color: 'var(--ink3)', textAlign: 'center' }}>
+              Share this QR code to drive traffic to your campaign landing page.
+            </div>
+            {qrDataUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrDataUrl} alt="Campaign QR Code" width={200} height={200} style={{ borderRadius: 8 }} />
+                <button
+                  className="cfc-btn primary"
+                  onClick={() => {
+                    const a = document.createElement('a')
+                    a.href = qrDataUrl
+                    a.download = `valueshare-campaign-qr-${slug}.png`
+                    a.click()
+                  }}
+                >
+                  ⬇ Download QR Code
+                </button>
+              </>
+            ) : (
+              <div style={{ width: 200, height: 200, background: 'var(--slate)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--ink3)' }}>
+                Generating…
+              </div>
+            )}
+            <button
+              className="cfc-btn sec"
+              onClick={() => setOpen(false)}
+              style={{ width: '100%' }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────
 export default function CreatorDashboardPage() {
   const searchParams = useSearchParams()
   const [activePage, setActivePage] = useState<Page>('overview')
-  const { data, campaigns, loading, error, refresh } = useCreatorDashboard()
+  const { data, campaigns, loading, error, refresh, rewardUnlockToast, clearRewardUnlockToast } = useCreatorDashboard()
 
   // Sync activePage with ?tab= URL param (reacts to router.push from header dropdown)
   useEffect(() => {
@@ -181,6 +293,16 @@ export default function CreatorDashboardPage() {
       {activePage === 'fraud' && <FraudPage data={data} />}
       {activePage === 'settings' && <SettingsPage />}
       {activePage === 'widgets' && <WidgetBrowser campaign={campaigns[0] ?? null} onClose={() => setActivePage('overview')} />}
+
+      {rewardUnlockToast && (
+        <Toast
+          message={rewardUnlockToast}
+          type="success"
+          icon="🎉"
+          duration={5000}
+          onDismiss={clearRewardUnlockToast}
+        />
+      )}
     </>
   )
 }
@@ -261,6 +383,19 @@ function OverviewPage({
         right: 'cta' as const,
         ctaLabel: 'View campaign →',
         ctaAction: () => window.open(`/c/${firstActive?.slug}`, '_blank'),
+      }
+    }
+
+    // State 3b: Participants joined but no clicks yet
+    if (activeCount > 0 && clicks === 0 && participants > 0) {
+      return {
+        eyebrow: 'Building momentum',
+        title: <>{participants === 1 ? 'First participant' : `${participants} participants`} <span>joined!</span></>,
+        sub: <>{participants === 1 ? 'Someone' : formatNumber(participants) + ' people'} signed up{firstActive ? <> for <strong>{firstActive.name}</strong></> : ''}. Share your link to start driving clicks.</>,
+        right: 'metric' as const,
+        metricValue: String(participants),
+        metricLabel: `participant${participants !== 1 ? 's' : ''} joined`,
+        badgeText: `${activeCount} campaign${activeCount !== 1 ? 's' : ''} live`,
       }
     }
 
@@ -627,6 +762,46 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
   const [marketplaceListed, setMarketplaceListed] = useState<Record<string, boolean>>({})
   const [toggling, setToggling] = useState<Record<string, boolean>>({})
   const [widgetCampaign, setWidgetCampaign] = useState<CampaignWithTiers | null>(null)
+  const [costLeadCampaignId, setCostLeadCampaignId] = useState<string | null>(null)
+  const [costLeadAmount, setCostLeadAmount] = useState('')
+  const [costLeadCurrency, setCostLeadCurrency] = useState('USD')
+  const [savingCostLead, setSavingCostLead] = useState(false)
+  const [trackingOpen, setTrackingOpen] = useState<Record<string, boolean>>({})
+  const [webhookSecrets, setWebhookSecrets] = useState<Record<string, string>>({})
+  const [secretCopied, setSecretCopied] = useState<Record<string, boolean>>({})
+  const [snippetCopied, setSnippetCopied] = useState<Record<string, boolean>>({})
+
+  async function fetchWebhookSecret(campId: string) {
+    if (webhookSecrets[campId]) return
+    try {
+      const res = await fetch(`/api/campaigns/${campId}/webhook-secret`)
+      if (res.ok) {
+        const { secret } = await res.json()
+        setWebhookSecrets((prev) => ({ ...prev, [campId]: secret }))
+      }
+    } catch { /* ignore */ }
+  }
+
+  function toggleTracking(campId: string) {
+    const next = !trackingOpen[campId]
+    setTrackingOpen((prev) => ({ ...prev, [campId]: next }))
+    if (next) fetchWebhookSecret(campId)
+  }
+
+  function copySnippet(campId: string) {
+    const snippet = `<script src="https://valueshare.co/pixel.js"></script>`
+    navigator.clipboard.writeText(snippet)
+    setSnippetCopied((prev) => ({ ...prev, [campId]: true }))
+    setTimeout(() => setSnippetCopied((prev) => ({ ...prev, [campId]: false })), 2000)
+  }
+
+  function copySecret(campId: string) {
+    const secret = webhookSecrets[campId]
+    if (!secret) return
+    navigator.clipboard.writeText(secret)
+    setSecretCopied((prev) => ({ ...prev, [campId]: true }))
+    setTimeout(() => setSecretCopied((prev) => ({ ...prev, [campId]: false })), 2000)
+  }
 
   async function handleMarketplaceToggle(camp: CampaignWithTiers) {
     const current = marketplaceListed[camp.id] ?? camp.marketplace_listed ?? false
@@ -648,6 +823,30 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
       setMarketplaceListed((prev) => ({ ...prev, [camp.id]: current }))
     } finally {
       setToggling((prev) => ({ ...prev, [camp.id]: false }))
+    }
+  }
+
+  async function handleSaveCostLead() {
+    if (!costLeadCampaignId) return
+    const amount = parseFloat(costLeadAmount)
+    if (isNaN(amount) || amount < 0) return
+    setSavingCostLead(true)
+    try {
+      const res = await fetch(`/api/campaigns/${costLeadCampaignId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cost_per_lead: amount > 0 ? amount : null,
+          cost_per_lead_currency: costLeadCurrency,
+        }),
+      })
+      if (res.ok) {
+        setCostLeadCampaignId(null)
+        setCostLeadAmount('')
+        onRefresh()
+      }
+    } finally {
+      setSavingCostLead(false)
     }
   }
 
@@ -720,6 +919,14 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
             const goal = firstTier ? firstTier.threshold * Math.max(camp.total_participants, 1) : null
             const prog = goal ? getProgressPercentage(camp.total_clicks, goal) : null
             const isDraft = camp.status === 'draft'
+            const costLead = camp.cost_per_lead ?? null
+            const campCurrency = camp.cost_per_lead_currency || 'USD'
+            const savings = costLead != null && camp.total_participants > 0
+              ? costLead * camp.total_participants
+              : null
+            const savingsStr = savings != null
+              ? (() => { try { return new Intl.NumberFormat('en', { style: 'currency', currency: campCurrency, maximumFractionDigits: 0 }).format(savings) } catch { return savings.toLocaleString() } })()
+              : null
 
             return (
               <div key={camp.id} className="camp-full-card" style={isDraft ? { opacity: 0.7 } : undefined}>
@@ -737,7 +944,7 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                     <div className="cfc-meta">
                       <div className="cfc-type">
                         {firstTier
-                          ? `Goal: ${firstTier.threshold} clicks per participant → ${firstTier.reward_label}`
+                          ? `Goal: ${firstTier.threshold} ${camp.kpi_type === 'clicks' ? 'clicks' : camp.kpi_type === 'registrations' ? 'sign-ups' : camp.kpi_type === 'purchases' ? 'purchases' : camp.kpi_type === 'shares' ? 'shares' : 'clicks'} per participant → ${firstTier.reward_label}`
                           : isDraft ? 'Goal not set · Reward not configured' : 'No reward configured'}
                       </div>
                       {camp.destination_url && (
@@ -745,54 +952,63 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    {isDraft ? (
-                      <>
-                        <button className="cfc-btn primary" onClick={() => router.push(`/dashboard/creator/campaigns/new?edit=${camp.id}`)}>
-                          Continue setup →
-                        </button>
-                        <button className="cfc-btn sec" onClick={async () => {
-                          if (!confirm('Delete this draft campaign?')) return
-                          await fetch(`/api/campaigns/${camp.id}`, { method: 'DELETE' })
-                          onRefresh()
-                        }}>
-                          🗑 Delete
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="cfc-btn sec" onClick={() => router.push(`/dashboard/creator/campaigns/new?edit=${camp.id}`)}>
-                          ✏️ Edit
-                        </button>
-                        {camp.status === 'active' && (
+                  <div className="cfc-btn-stack">
+                    <div className="cfc-actions">
+                      {isDraft ? (
+                        <>
+                          <button className="cfc-btn primary" onClick={() => router.push(`/dashboard/creator/campaigns/new?edit=${camp.id}`)}>
+                            Continue setup →
+                          </button>
                           <button className="cfc-btn sec" onClick={async () => {
-                            await fetch(`/api/campaigns/${camp.id}/status`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ status: 'paused' }),
-                            })
+                            if (!confirm('Delete this draft campaign?')) return
+                            await fetch(`/api/campaigns/${camp.id}`, { method: 'DELETE' })
                             onRefresh()
                           }}>
-                            ⏸ Pause
+                            🗑 Delete
                           </button>
-                        )}
-                        {camp.status === 'paused' && (
-                          <button className="cfc-btn sec" onClick={async () => {
-                            await fetch(`/api/campaigns/${camp.id}/status`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ status: 'active' }),
-                            })
-                            onRefresh()
-                          }}>
-                            ▶ Resume
+                        </>
+                      ) : (
+                        <>
+                          <button className="cfc-btn sec" onClick={() => router.push(`/dashboard/creator/campaigns/new?edit=${camp.id}`)}>
+                            ✏️ Edit
                           </button>
-                        )}
+                          {camp.status === 'active' && (
+                            <button className="cfc-btn sec" onClick={async () => {
+                              await fetch(`/api/campaigns/${camp.id}/status`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'paused' }),
+                              })
+                              onRefresh()
+                            }}>
+                              ⏸ Pause
+                            </button>
+                          )}
+                          {camp.status === 'paused' && (
+                            <button className="cfc-btn sec" onClick={async () => {
+                              await fetch(`/api/campaigns/${camp.id}/status`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'active' }),
+                              })
+                              onRefresh()
+                            }}>
+                              ▶ Resume
+                            </button>
+                          )}
+                          <button className="cfc-btn primary" onClick={() => window.open(`/c/${camp.slug}`, '_blank')}>
+                            View campaign →
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {/* Secondary tools row — aligned below primary actions */}
+                    {!isDraft && (
+                      <div className="cfc-tools">
                         <button className="cfc-btn sec" onClick={() => setWidgetCampaign(camp)}>🧩 Browse Widgets</button>
-                        <button className="cfc-btn primary" onClick={() => window.open(`/c/${camp.slug}`, '_blank')}>
-                          View campaign →
-                        </button>
-                      </>
+                        <CopyLinkBtn slug={camp.slug} />
+                        <CampaignQrBtn slug={camp.slug} />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -803,14 +1019,28 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                         { v: formatNumber(camp.total_clicks), l: 'Total clicks' },
                         { v: formatNumber(camp.total_participants), l: 'Participants' },
                         { v: `${viral}×`, l: 'Viral coeff.' },
-                        { v: '$0', l: 'Ad spend', c: '↑ Pure organic' },
                       ].map((s) => (
                         <div key={s.l} className="cfc-stat">
                           <div className="cfc-sv">{s.v}</div>
                           <div className="cfc-sl">{s.l}</div>
-                          {s.c && <div className="cfc-sc">{s.c}</div>}
                         </div>
                       ))}
+                      <div
+                        className="cfc-stat"
+                        title="Click to set your cost per lead and calculate savings"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setCostLeadCampaignId(camp.id)
+                          setCostLeadAmount(costLead != null ? String(costLead) : '')
+                          setCostLeadCurrency(campCurrency)
+                        }}
+                      >
+                        <div className="cfc-sv" style={{ color: savingsStr ? 'var(--emerald)' : 'var(--ink3)' }}>
+                          {savingsStr ?? '✏️ Set'}
+                        </div>
+                        <div className="cfc-sl">Ad spend saved</div>
+                        <div className="cfc-sc">{savingsStr ? '↓ Saved vs paid ads' : 'Enter cost/lead →'}</div>
+                      </div>
                       {prog !== null && (
                         <div className="cfc-prog-wrap" style={{ minWidth: 180 }}>
                           <div className="cfc-prog-lbl">
@@ -826,6 +1056,76 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+                {/* Conversion tracking setup panel — only for non-click campaigns */}
+                {!isDraft && camp.kpi_type !== 'clicks' && (
+                  <div style={{ borderTop: '1px solid var(--border2)' }}>
+                    <button
+                      onClick={() => toggleTracking(camp.id)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif" }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>📡</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>Conversion Tracking Setup</span>
+                        <span style={{ fontSize: 11, color: 'var(--coral)', fontWeight: 700, background: 'var(--coral-light)', padding: '1px 7px', borderRadius: 20 }}>Required</span>
+                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{trackingOpen[camp.id] ? '▲ Hide' : '▼ Show'}</span>
+                    </button>
+                    {trackingOpen[camp.id] && (
+                      <div style={{ padding: '0 24px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div style={{ fontSize: 13, color: 'var(--ink3)', lineHeight: 1.5 }}>
+                          Since your goal is <strong>{camp.kpi_type === 'registrations' ? 'sign-ups' : camp.kpi_type}</strong>, you need to install tracking on your thank-you page so ValueShare can verify conversions.
+                        </div>
+                        {/* Pixel snippet */}
+                        <div style={{ background: 'var(--slate)', border: '1.5px solid var(--border2)', borderRadius: 10, padding: 14 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Option 1 — JS Pixel (easiest)</div>
+                          <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10 }}>Paste this on your <strong>thank-you / confirmation page</strong>. Works on Webflow, WordPress, Carrd, any HTML site.</div>
+                          <div style={{ background: '#1a1a2e', borderRadius: 7, padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: '#a5f3fc', wordBreak: 'break-all', marginBottom: 10 }}>
+                            {`<script src="https://valueshare.co/pixel.js"></script>`}
+                          </div>
+                          <button
+                            className="cfc-btn sec"
+                            onClick={() => copySnippet(camp.id)}
+                            style={{ fontSize: 12 }}
+                          >
+                            {snippetCopied[camp.id] ? '✓ Copied!' : '📋 Copy snippet'}
+                          </button>
+                        </div>
+                        {/* Webhook */}
+                        <div style={{ background: 'var(--slate)', border: '1.5px solid var(--border2)', borderRadius: 10, padding: 14 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Option 2 — Server Webhook</div>
+                          <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10 }}>
+                            POST to <code style={{ background: 'var(--slate2)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>https://valueshare.co/api/conversion</code> from your backend or a Zapier/Make.com workflow when a sign-up happens.
+                          </div>
+                          <div style={{ background: '#1a1a2e', borderRadius: 7, padding: '10px 14px', fontFamily: 'monospace', fontSize: 11, color: '#a5f3fc', whiteSpace: 'pre-wrap', marginBottom: 10 }}>
+                            {`POST /api/conversion\n{\n  "ref_code": "<participant_ref>",\n  "event": "signup",\n  "secret": "${webhookSecrets[camp.id] || '(loading...)'}"\n}`}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              className="cfc-btn sec"
+                              onClick={() => copySecret(camp.id)}
+                              style={{ fontSize: 12 }}
+                            >
+                              {secretCopied[camp.id] ? '✓ Copied!' : '🔑 Copy secret'}
+                            </button>
+                            <button
+                              className="cfc-btn sec"
+                              onClick={async () => {
+                                const res = await fetch(`/api/campaigns/${camp.id}/webhook-secret`, { method: 'DELETE' })
+                                if (res.ok) {
+                                  const { secret } = await res.json()
+                                  setWebhookSecrets((prev) => ({ ...prev, [camp.id]: secret }))
+                                }
+                              }}
+                              style={{ fontSize: 12 }}
+                            >
+                              🔄 Rotate secret
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {/* Marketplace toggle — shown for all non-draft campaigns */}
@@ -925,6 +1225,90 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
           campaign={widgetCampaign}
           onClose={() => setWidgetCampaign(null)}
         />
+      )}
+
+      {/* ── Cost-per-lead popover ── */}
+      {costLeadCampaignId && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setCostLeadCampaignId(null)}
+        >
+          <div
+            style={{ background: 'var(--vs-bg)', borderRadius: 16, padding: 28, minWidth: 320, maxWidth: 400, width: '90vw', display: 'flex', flexDirection: 'column', gap: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Set your cost per lead</div>
+              <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                Enter what you currently pay per lead through paid ads. ValueShare will calculate how much you&apos;re saving with organic referrals.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', marginBottom: 4 }}>Cost per lead</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 50"
+                  value={costLeadAmount}
+                  onChange={(e) => setCostLeadAmount(e.target.value)}
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 9,
+                    border: '1.5px solid var(--border2)', background: 'var(--vs-bg)',
+                    fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div style={{ minWidth: 140 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', marginBottom: 4 }}>Currency</div>
+                <select
+                  value={costLeadCurrency}
+                  onChange={(e) => setCostLeadCurrency(e.target.value)}
+                  style={{
+                    width: '100%', padding: '8px 10px', borderRadius: 9,
+                    border: '1.5px solid var(--border2)', background: 'var(--vs-bg)',
+                    fontSize: 13, outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {costLeadAmount && parseFloat(costLeadAmount) > 0 && (
+              <div style={{ background: 'rgba(5,150,105,.08)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--emerald)', fontWeight: 600 }}>
+                Estimated savings: {(() => {
+                  const camp = campaigns.find((c) => c.id === costLeadCampaignId)
+                  if (!camp) return '—'
+                  const s = parseFloat(costLeadAmount) * camp.total_participants
+                  try { return new Intl.NumberFormat('en', { style: 'currency', currency: costLeadCurrency, maximumFractionDigits: 0 }).format(s) } catch { return s.toLocaleString() }
+                })()} saved so far
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                className="cfc-btn sec"
+                onClick={() => setCostLeadCampaignId(null)}
+                disabled={savingCostLead}
+              >
+                Cancel
+              </button>
+              <button
+                className="cfc-btn primary"
+                onClick={handleSaveCostLead}
+                disabled={savingCostLead || !costLeadAmount}
+              >
+                {savingCostLead ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
@@ -1139,8 +1523,8 @@ function ParticipantsPage({ data }: { data: CreatorDashboardData | null }) {
                       {p.email.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="pr-name">{anonymizeEmail(p.email)}</div>
-                      <div className="pr-sub">{p.email.split('@')[1] ? `@${p.email.split('@')[1]}` : ''}</div>
+                      <div className="pr-name">{p.email.split('@')[0]}</div>
+                      <div className="pr-sub">{anonymizeEmail(p.email)}</div>
                     </div>
                   </div>
                   <div className="pr-reward" style={{ fontSize: 12 }}>{p.campaign_name}</div>

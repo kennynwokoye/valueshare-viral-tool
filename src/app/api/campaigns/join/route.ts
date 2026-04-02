@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // Step 1: Verify campaign exists and is active
     const { data: campaign } = await supabase
       .from('campaigns')
-      .select('id, status')
+      .select('id, status, participant_cap')
       .eq('id', campaign_id)
       .single()
 
@@ -29,6 +29,17 @@ export async function POST(request: Request) {
     }
     if (campaign.status !== 'active') {
       return NextResponse.json({ error: 'This campaign is no longer active' }, { status: 400 })
+    }
+
+    // Step 1b: Enforce participant cap (if set)
+    if (campaign.participant_cap != null) {
+      const { count } = await supabase
+        .from('participants')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign_id)
+      if (count != null && count >= campaign.participant_cap) {
+        return NextResponse.json({ error: 'This campaign has reached its maximum number of participants' }, { status: 400 })
+      }
     }
 
     // Step 2: Create or find the user account

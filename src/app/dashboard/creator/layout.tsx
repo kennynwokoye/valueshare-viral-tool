@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/types'
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
+import Toast from '@/components/Toast'
 import NotificationPanel from './NotificationPanel'
 import {
   LayoutDashboard,
@@ -12,12 +14,13 @@ import {
   Users,
   Trophy,
   ShieldCheck,
-  Code2,
+  Store,
   Settings,
   LogOut,
   Rocket,
   ChevronDown,
   User,
+  ArrowLeftRight,
 } from 'lucide-react'
 
 type NavPage = 'overview' | 'campaigns' | 'analytics' | 'participants' | 'rewards' | 'fraud' | 'settings'
@@ -38,15 +41,21 @@ function formatDate(): string {
 export default function CreatorDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const activeTab = (searchParams.get('tab') ?? 'overview') as NavPage
-  const [user, setUser] = useState<{ name: string; email: string; initial: string } | null>(null)
+  const pathname = usePathname()
+  const activeTab: NavPage = pathname.startsWith('/dashboard/creator/campaigns')
+    ? 'campaigns'
+    : (searchParams.get('tab') ?? 'overview') as NavPage
+  const [user, setUser] = useState<{ id: string; name: string; email: string; initial: string } | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [activeCampaignCount, setActiveCampaignCount] = useState<number>(0)
   const [unreadCount, setUnreadCount] = useState<number>(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showPanel, setShowPanel] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [hasParticipantAccount, setHasParticipantAccount] = useState(false)
+  const [notifToast, setNotifToast] = useState<{ message: string; type: 'info' | 'success' | 'celebration' | 'warning'; icon: string } | null>(null)
   const bellRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
 
@@ -59,6 +68,7 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
 
       const name = u.user_metadata?.name || u.email?.split('@')[0] || 'Creator'
       setUser({
+        id: u.id,
         name,
         email: u.email || '',
         initial: name.charAt(0).toUpperCase(),
@@ -95,6 +105,13 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
       if (profileResult.data?.photo_url) {
         setProfilePhotoUrl(profileResult.data.photo_url)
       }
+
+      // Check if this creator also has participant records (for role switcher)
+      const { count: participantCount } = await supabase
+        .from('participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', u.id)
+      setHasParticipantAccount((participantCount ?? 0) > 0)
     }
 
     init()
@@ -122,6 +139,17 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount((c) => Math.max(0, c - 1))
   }
+
+  // Real-time notifications
+  const handleCreatorNotification = useCallback((n: Notification) => {
+    setUnreadCount((c) => c + 1)
+    setNotifications((prev) => [n, ...prev].slice(0, 20))
+    const icon = n.type === 'new_participant' ? '👤' : n.type === 'progress_milestone' ? '🏆' : '🔔'
+    const type: 'info' | 'success' = n.type === 'progress_milestone' ? 'success' : 'info'
+    setNotifToast({ message: n.message || 'New notification', type, icon })
+  }, [])
+
+  useRealtimeNotifications(user?.id ?? null, handleCreatorNotification)
 
   // Outside-click for notification panel
   useEffect(() => {
@@ -164,16 +192,17 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
     },
   ]
 
-  const toolItems: { page?: NavPage; icon: React.ComponentType<{ size?: number }>; label: string }[] = [
+  const toolItems: { page?: NavPage; href?: string; icon: React.ComponentType<{ size?: number }>; label: string }[] = [
     { page: 'fraud', icon: ShieldCheck, label: 'Fraud Shield' },
-    { page: 'widgets' as NavPage, icon: Code2, label: 'Embed Widget' },
+    { href: 'https://valueshare.co/marketplace', icon: Store, label: 'Marketplace' },
     { page: 'settings', icon: Settings, label: 'Settings' },
   ]
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <div className={`sb-backdrop${sidebarOpen ? ' active' : ''}`} onClick={() => setSidebarOpen(false)} />
       {/* SIDEBAR */}
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarOpen ? ' sb-open' : ''}`}>
         <div className="sb-logo">
           <div className="sb-logo-ic">◆</div>
           <div className="sb-logo-name">Value<span>Share</span></div>
@@ -201,7 +230,7 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
               key={item.page}
               className={`sb-item${activeTab === item.page ? ' active' : ''}`}
               data-page={item.page}
-              onClick={() => router.push(`/dashboard/creator?tab=${item.page}`)}
+              onClick={() => { router.push(`/dashboard/creator?tab=${item.page}`); setSidebarOpen(false) }}
             >
               <span className="si-ico"><item.icon size={18} /></span>
               <span className="si-lbl">{item.label}</span>
@@ -222,7 +251,10 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
               key={item.label}
               className={`sb-item${activeTab === item.page ? ' active' : ''}`}
               data-page={item.page || ''}
-              onClick={() => item.page && router.push(`/dashboard/creator?tab=${item.page}`)}
+              onClick={() => {
+                if (item.href) { window.open(item.href, '_blank'); setSidebarOpen(false) }
+                else if (item.page) { router.push(`/dashboard/creator?tab=${item.page}`); setSidebarOpen(false) }
+              }}
             >
               <span className="si-ico"><item.icon size={18} /></span>
               <span className="si-lbl">{item.label}</span>
@@ -236,6 +268,15 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
             <div className="sb-up-s">Unlock unlimited campaigns and advanced fraud detection.</div>
             <button className="sb-up-btn" onClick={() => router.push('/dashboard/creator?tab=settings')}>Upgrade to Scale →</button>
           </div>
+          {hasParticipantAccount && (
+            <a
+              href="/dashboard/participant"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(5,150,105,.1)', border: '1px solid rgba(5,150,105,.22)', borderRadius: 9, padding: '9px 12px', textDecoration: 'none', color: 'var(--emerald)', fontSize: 13, fontWeight: 700, marginBottom: 8, transition: 'all .2s' }}
+            >
+              <ArrowLeftRight size={15} />
+              Switch to Participant View
+            </a>
+          )}
           <button className="sb-signout" onClick={handleSignOut} disabled={signingOut}>
             <span className="si-ico"><LogOut size={18} /></span>
             <span className="si-lbl">{signingOut ? 'Signing out...' : 'Sign out'}</span>
@@ -247,7 +288,10 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
       <div className="dash-main">
         <header className="dash-header">
           <div className="dh-left">
-            <div>
+            <button className="dh-hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+              <span /><span /><span />
+            </button>
+            <div className="dh-head-info">
               <div className="dh-greeting">{getGreeting()}, <span>{displayName}</span></div>
               <div className="dh-date">{formatDate()}</div>
             </div>
@@ -315,9 +359,24 @@ export default function CreatorDashboardLayout({ children }: { children: React.R
           </div>
         </header>
 
+        {/* Mobile-only greeting shown below header, above hero card */}
+        <div className="dh-mob-greeting">
+          {getGreeting()}, <span>{displayName}</span>
+        </div>
+
         <div className="dash-content">
           {children}
         </div>
+
+        {/* Real-time notification toast */}
+        {notifToast && (
+          <Toast
+            message={notifToast.message}
+            type={notifToast.type}
+            icon={notifToast.icon}
+            onDismiss={() => setNotifToast(null)}
+          />
+        )}
       </div>
     </div>
   )

@@ -55,17 +55,14 @@ export default async function WidgetPage({ params, searchParams }: Props) {
 
   return (
     <WidgetForm
-      campaignId={campaign.id}
       widgetId={widget.id}
+      campaignUrl={`/c/${campaign.slug}`}
       headline={widget.widget_headline ?? campaign.headline ?? 'Join & earn rewards'}
-      subtext={widget.widget_subtext ?? campaign.subheadline ?? 'Get your unique referral link.'}
-      ctaText={widget.widget_cta ?? 'Get Your Free Link \u2192'}
+      subtext={widget.widget_subtext ?? campaign.subheadline ?? 'Join and get your unique ValueShare link.'}
+      ctaText={widget.widget_cta ?? 'Join Campaign \u2192'}
       theme={(widget.widget_theme as 'light' | 'dark') ?? 'light'}
       accentColor={widget.widget_accent_color ?? '#e85d3a'}
-      successHeadline={widget.widget_success_headline ?? null}
-      successMessage={widget.widget_success_message ?? null}
       participantCount={campaign.total_participants ?? 0}
-      prefillEmail={prefillEmail}
     />
   )
 }

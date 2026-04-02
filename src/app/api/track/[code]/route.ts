@@ -11,7 +11,7 @@ import {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://valueshare.netlify.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://valueshare.co'
 
 interface Props {
   params: Promise<{ code: string }>
@@ -196,8 +196,17 @@ export async function GET(request: Request, { params }: Props) {
       return u.protocol === 'https:' || u.protocol === 'http:'
     } catch { return false }
   }
-  const redirectTarget = isSafeRedirectUrl(campaign.destination_url)
+
+  let baseTarget = isSafeRedirectUrl(campaign.destination_url)
     ? campaign.destination_url
     : `${APP_URL}/c/${campaign.slug}`
-  return NextResponse.redirect(redirectTarget, 302)
+
+  // Append vs_ref so the ValueShare pixel can read it on the destination page
+  try {
+    const dest = new URL(baseTarget)
+    dest.searchParams.set('vs_ref', code.toUpperCase())
+    baseTarget = dest.toString()
+  } catch { /* keep baseTarget as-is if URL parse fails */ }
+
+  return NextResponse.redirect(baseTarget, 302)
 }
