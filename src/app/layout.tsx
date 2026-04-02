@@ -9,10 +9,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     template: "%s | ValueShare",
-    default: "ValueShare — Viral Referral Marketing",
+    default: "ValueShare — Viral Marketing Platform",
   },
   description:
-    "The viral referral marketing platform that turns your customers into your growth engine.",
+    "The viral marketing platform that turns your customers into your growth engine.",
 };
 
 export default function RootLayout({

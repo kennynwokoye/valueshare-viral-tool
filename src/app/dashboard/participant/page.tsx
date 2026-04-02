@@ -430,7 +430,7 @@ function OverviewPage({ data, clickCount, progressCount, kpiLabel, allClicks, re
       {/* Two columns */}
       <div className="two-col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Referral Link Card */}
+          {/* ValueShare Link Card */}
           <div className="p-card">
             <div className="p-card-hd">
               <div><div className="p-card-title">Your ValueShare link</div><div className="p-card-sub">Share this to earn clicks</div></div>
@@ -716,7 +716,7 @@ function SharePage({ data, referralLink, captions, onCopy, copied }: {
               <div className="p-card-hd"><div className="p-card-title">QR Code</div></div>
               <div style={{ padding: 20, display: 'flex', justifyContent: 'center' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrDataUrl} alt="Referral QR Code" width={160} height={160} />
+                <img src={qrDataUrl} alt="ValueShare QR Code" width={160} height={160} />
               </div>
             </div>
           )}

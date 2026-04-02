@@ -197,7 +197,7 @@ export default async function CampaignPage({ params }: Props) {
 
   const footer = (
     <footer className="cl-footer">
-      <strong>ValueShare</strong> &mdash; Viral referral campaigns made simple
+      <strong>ValueShare</strong> &mdash; Value-driven campaigns made simple
     </footer>
   )
 
@@ -237,13 +237,13 @@ export default async function CampaignPage({ params }: Props) {
 
   const cta1Section = (
     <div className="cl-cta-block">
-      <a href="#join">{config.ctaText || 'Get My Referral Link \u2192'}</a>
+      <a href="#join">{config.ctaText || 'Get My ValueShare Link \u2192'}</a>
     </div>
   )
 
   const cta2Section = (
     <div className="cl-cta-block">
-      <a href="#join">{config.cta2Text || config.ctaText || 'Get My Referral Link \u2192'}</a>
+      <a href="#join">{config.cta2Text || config.ctaText || 'Get My ValueShare Link \u2192'}</a>
     </div>
   )
 
@@ -358,8 +358,8 @@ export default async function CampaignPage({ params }: Props) {
 
   /* Join section */
   const joinTitle = campaign.total_participants > 0
-    ? `Join ${campaign.total_participants.toLocaleString()} ${campaign.total_participants === 1 ? 'person' : 'people'} & get your referral link`
-    : 'Get your referral link'
+    ? `Join ${campaign.total_participants.toLocaleString()} ${campaign.total_participants === 1 ? 'person' : 'people'} & get your ValueShare link`
+    : 'Get your ValueShare link'
 
   const joinSection = (
     <div id="join" className="cl-join-wrap">

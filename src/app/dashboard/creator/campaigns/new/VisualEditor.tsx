@@ -676,7 +676,7 @@ function SectionEditPanel({
             className="ve-input"
             value={config.ctaText || ''}
             onChange={(e) => patchConfig({ ctaText: e.target.value })}
-            placeholder="Get My Referral Link →"
+            placeholder="Get My ValueShare Link →"
           />
         </div>
       )
@@ -705,7 +705,7 @@ function SectionEditPanel({
             className="ve-input"
             value={config.cta2Text || ''}
             onChange={(e) => patchConfig({ cta2Text: e.target.value })}
-            placeholder="Get My Referral Link →"
+            placeholder="Get My ValueShare Link →"
           />
           <span style={{ fontSize: 11, color: 'var(--ink3)' }}>Leave empty to use the same text as CTA Button 1</span>
         </div>
@@ -799,7 +799,7 @@ function SectionEditPanel({
               className="ve-input"
               value={config.ctaText || ''}
               onChange={(e) => patchConfig({ ctaText: e.target.value })}
-              placeholder="Get My Referral Link →"
+              placeholder="Get My ValueShare Link →"
             />
           </div>
           <div className="ve-toggle-row">
@@ -1255,7 +1255,7 @@ function SettingsTab({ data, update, config }: { data: Partial<CreateCampaignPay
           onChange={(e) => update({ destination_url: e.target.value })}
           placeholder="https://yoursite.com"
         />
-        <span style={{ fontSize: 11, color: 'var(--ink3)' }}>Where referral links point to</span>
+        <span style={{ fontSize: 11, color: 'var(--ink3)' }}>Where ValueShare links point to</span>
       </div>
 
       <div className="ve-field">
@@ -1315,7 +1315,7 @@ function SettingsTab({ data, update, config }: { data: Partial<CreateCampaignPay
           className="ve-input"
           value={config.widgetSubheadline || ''}
           onChange={(e) => patchConfig({ widgetSubheadline: e.target.value })}
-          placeholder="Get your referral link"
+          placeholder="Get your ValueShare link"
         />
       </div>
 

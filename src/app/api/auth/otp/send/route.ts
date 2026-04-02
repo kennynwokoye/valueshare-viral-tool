@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendOtpEmail } from '@/lib/email'
 
@@ -26,8 +26,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Send OTP email via Resend
-    await sendOtpEmail({ to: emailLower, otp: otpResult.otp_code })
+    // Fire email in the background — response returns immediately so users
+    // aren't blocked waiting for SMTP to complete (was causing 15–20s delays).
+    after(async () => {
+      await sendOtpEmail({ to: emailLower, otp: otpResult.otp_code })
+    })
 
     return NextResponse.json({ success: true })
   } catch {

@@ -208,5 +208,15 @@ export async function GET(request: Request, { params }: Props) {
     baseTarget = dest.toString()
   } catch { /* keep baseTarget as-is if URL parse fails */ }
 
-  return NextResponse.redirect(baseTarget, 302)
+  // Set attribution cookie for the hosted thank-you page flow.
+  // Browsers process Set-Cookie on 302 responses before following the redirect.
+  const response = NextResponse.redirect(baseTarget, 302)
+  response.cookies.set('vs_pending_ref', code.toUpperCase(), {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: '/',
+  })
+  return response
 }

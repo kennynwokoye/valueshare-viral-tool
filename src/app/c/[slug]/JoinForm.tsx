@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import OtpInput from '@/components/OtpInput'
 
 export default function JoinForm({ campaignId, ctaText }: { campaignId: string; ctaText?: string }) {
@@ -10,6 +10,15 @@ export default function JoinForm({ campaignId, ctaText }: { campaignId: string; 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loadingMs, setLoadingMs] = useState(0)
+
+  // Track how long we've been loading so we can show a sub-message if slow
+  useEffect(() => {
+    if (!loading) { setLoadingMs(0); return }
+    const start = Date.now()
+    const id = setInterval(() => setLoadingMs(Date.now() - start), 500)
+    return () => clearInterval(id)
+  }, [loading])
 
   async function sendOtp() {
     setError('')
@@ -91,6 +100,11 @@ export default function JoinForm({ campaignId, ctaText }: { campaignId: string; 
           <button type="submit" disabled={loading} className="cl-join-btn">
             {loading ? 'Sending…' : (ctaText || 'Send my code \u2192')}
           </button>
+          {loading && loadingMs > 3000 && (
+            <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--cl-text-muted)', marginTop: 8, opacity: 0.8 }}>
+              Still sending… this can take a few seconds
+            </div>
+          )}
         </form>
         <div className="cl-join-login">
           Already joined?{' '}

@@ -25,7 +25,7 @@ const SLIDES = [
     body: 'Offer your mini-course, template, or blueprint as a reward. Participants share your campaign and unlock it when they hit milestones — growth on autopilot.',
     testimonial: {
       stars: '★★★★★',
-      quote: '"I launched a webinar campaign and hit 500 registrations in 72 hours. The referral mechanic did all the heavy lifting."',
+      quote: '"I launched a webinar campaign and hit 500 registrations in 72 hours. The ValueShare mechanic did all the heavy lifting."',
       name: 'Kenny Nwokoye',
       role: 'Marketing Educator · 40K following',
       color: '#e85d3a',

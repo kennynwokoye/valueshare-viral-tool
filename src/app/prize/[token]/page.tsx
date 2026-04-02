@@ -73,7 +73,7 @@ export default async function PrizePage({ params }: Props) {
             </p>
           </div>
           <footer className="pz-footer">
-            <strong>ValueShare</strong> &mdash; Viral referral campaigns made
+            <strong>ValueShare</strong> &mdash; Value-driven campaigns made
             simple
           </footer>
         </div>
@@ -95,7 +95,7 @@ export default async function PrizePage({ params }: Props) {
             </p>
           </div>
           <footer className="pz-footer">
-            <strong>ValueShare</strong> &mdash; Viral referral campaigns made
+            <strong>ValueShare</strong> &mdash; Value-driven campaigns made
             simple
           </footer>
         </div>
@@ -150,7 +150,7 @@ export default async function PrizePage({ params }: Props) {
 
         {/* Footer */}
         <footer className="pz-footer">
-          <strong>ValueShare</strong> &mdash; Viral referral campaigns made
+          <strong>ValueShare</strong> &mdash; Value-driven campaigns made
           simple
         </footer>
       </div>

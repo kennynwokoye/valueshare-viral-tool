@@ -165,7 +165,7 @@ export default function CampaignPreview({ data }: Props) {
 
   const footer = (
     <footer className="cl-footer">
-      <strong>ValueShare</strong> &mdash; Viral referral campaigns made simple
+      <strong>ValueShare</strong> &mdash; Value-driven campaigns made simple
     </footer>
   )
 
@@ -205,13 +205,13 @@ export default function CampaignPreview({ data }: Props) {
 
   const cta1Section = (
     <div className="cl-cta-block">
-      <a href="#join-preview">{config.ctaText || 'Get My Referral Link →'}</a>
+      <a href="#join-preview">{config.ctaText || 'Get My ValueShare Link →'}</a>
     </div>
   )
 
   const cta2Section = (
     <div className="cl-cta-block">
-      <a href="#join-preview">{config.cta2Text || config.ctaText || 'Get My Referral Link →'}</a>
+      <a href="#join-preview">{config.cta2Text || config.ctaText || 'Get My ValueShare Link →'}</a>
     </div>
   )
 
@@ -356,14 +356,14 @@ export default function CampaignPreview({ data }: Props) {
           <span>Trusted platform</span>
         </div>
       </div>
-      <p className="cl-join-wrap-title">Get your referral link</p>
+      <p className="cl-join-wrap-title">Get your ValueShare link</p>
       <p className="cl-join-wrap-sub">You&apos;ll be sharing in under 60 seconds</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', pointerEvents: 'none' }}>
         <div style={{ padding: '10px 14px', border: '1.5px solid rgba(var(--cl-accent-rgb),0.3)', borderRadius: '9px', fontSize: '14px', color: 'var(--cl-text-muted)', background: 'var(--cl-surface)' }}>
           your@email.com
         </div>
         <div style={{ padding: '12px 0', textAlign: 'center', background: 'var(--cl-accent)', color: '#fff', borderRadius: '9px', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--cl-heading-font)' }}>
-          {config.ctaText || 'Get My Referral Link →'}
+          {config.ctaText || 'Get My ValueShare Link →'}
         </div>
       </div>
       <p className="cl-join-trust">&#x1F512; We won&apos;t spam you. Unsubscribe anytime.</p>

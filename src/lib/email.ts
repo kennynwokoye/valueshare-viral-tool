@@ -50,7 +50,7 @@ function baseTemplate(content: string): string {
                 To unsubscribe from non-essential emails, visit
                 <a href="${APP_URL}/preferences" style="color:#505068;">valueshare.co/preferences</a>
                 or reply to this email with &ldquo;unsubscribe&rdquo;.<br />
-                ValueShare &mdash; Digital Referral Growth Platform
+                ValueShare &mdash; Value-Driven Growth Platform
               </span>
             </td>
           </tr>
@@ -156,7 +156,7 @@ export async function sendParticipantWelcomeEmail({
       You&rsquo;re in!
     </h2>
     <p style="font-size:13px;color:#9090a8;margin:0 0 24px 0;text-align:center;">
-      You&rsquo;ve joined <strong style="color:#f0f0f8;">${campaignTitle}</strong>. Share your referral link to unlock rewards.
+      You&rsquo;ve joined <strong style="color:#f0f0f8;">${campaignTitle}</strong>. Share your ValueShare link to unlock rewards.
     </p>
     <div style="background:#141425;border:1px solid #1e1e30;border-radius:2px;padding:16px;margin:0 0 16px 0;">
       <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#505068;">Your Goal</span>
@@ -165,7 +165,7 @@ export async function sendParticipantWelcomeEmail({
       </p>
     </div>
     <div style="background:#141425;border:1px solid #1e1e30;border-radius:2px;padding:16px;margin:0 0 24px 0;">
-      <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#505068;">Your Referral Link</span>
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#505068;">Your ValueShare Link</span>
       <p style="font-size:12px;color:#00FF94;margin:6px 0 0 0;word-break:break-all;">${referralLink}</p>
     </div>
     <div style="text-align:center;">

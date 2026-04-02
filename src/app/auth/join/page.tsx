@@ -83,7 +83,7 @@ function JoinForm() {
     return (
       <>
         <div className="auth-title">Participant access</div>
-        <div className="auth-sub">Track your referrals and claim your reward.</div>
+        <div className="auth-sub">Track your shares and claim your reward.</div>
 
         <div className="auth-code-pill">
           <div className="auth-cp-ico">&#128274;</div>
@@ -117,7 +117,7 @@ function JoinForm() {
         </form>
 
         <div className="auth-terms" style={{ marginTop: 20 }}>
-          Got a referral code? Enter your email above and we&apos;ll find your campaign automatically.
+          Already have a campaign link? Enter your email above and we&apos;ll find your campaign automatically.
         </div>
       </>
     )

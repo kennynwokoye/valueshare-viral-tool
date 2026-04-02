@@ -4,7 +4,7 @@ import type { MarketplaceCampaign } from '@/types'
 
 export const metadata = {
   title: 'Campaign Marketplace — ValueShare',
-  description: 'Browse live referral campaigns and earn rewards by sharing your unique link.',
+  description: 'Browse live campaigns and earn rewards by sharing your unique ValueShare link.',
 }
 
 export default async function MarketplacePage() {

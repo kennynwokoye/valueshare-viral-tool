@@ -173,6 +173,16 @@ async function recordConversion(payload: ConversionPayload): Promise<boolean> {
     campaignId = participant.campaign_id
   }
 
+  // Server-side dedup: same ref_code + IP in last 24h → skip insert
+  const { count: existing } = await supabase
+    .from('conversions')
+    .select('id', { count: 'exact', head: true })
+    .eq('ref_code', payload.ref)
+    .eq('ip_address', payload.ip)
+    .gte('created_at', new Date(Date.now() - 86400000).toISOString())
+
+  if ((existing ?? 0) > 0) return true // already recorded
+
   const { error } = await supabase.from('conversions').insert({
     participant_id: participantId,
     campaign_id: campaignId,

@@ -400,7 +400,7 @@ function GoalScreen({
             className="ve-goal-input"
             value={data.name || ''}
             onChange={(e) => update({ name: e.target.value })}
-            placeholder="e.g. Summer Referral Program"
+            placeholder="e.g. Summer ValueShare Campaign"
             autoFocus
           />
         </div>

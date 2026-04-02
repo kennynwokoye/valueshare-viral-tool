@@ -122,7 +122,7 @@ export default function MarketplaceClient({ campaigns }: { campaigns: Marketplac
         </h1>
         <p style={{ fontSize: 16, color: 'var(--ink3)', maxWidth: 480, margin: '0 auto 36px', lineHeight: 1.6 }}>
           Browse every live campaign on ValueShare. Join any of them and get your
-          unique referral link instantly — no invite needed.
+          unique ValueShare link instantly — no invite needed.
         </p>
 
         {/* Stats bar */}
@@ -468,7 +468,7 @@ function CampaignCard({
             <span>
               Earn{' '}
               <strong style={{ color: 'var(--ink)' }}>{c.first_tier.reward_label}</strong> for{' '}
-              <strong style={{ color: 'var(--ink)' }}>{c.first_tier.threshold}</strong> referrals
+              <strong style={{ color: 'var(--ink)' }}>{c.first_tier.threshold}</strong> {c.first_tier.threshold === 1 ? 'share' : 'shares'}
             </span>
           </div>
         )}

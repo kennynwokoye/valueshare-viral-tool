@@ -80,7 +80,7 @@ export default function Home() {
               <div className="vc-body">
                 <div className="vc-campaign">
                   <div>
-                    <div className="vcc-name">Webinar Referral Campaign</div>
+                    <div className="vcc-name">Webinar ValueShare Campaign</div>
                     <div className="vcc-sub">50 clicks → Masterclass</div>
                   </div>
                   <div className="vcc-badge">Active</div>
@@ -206,7 +206,7 @@ export default function Home() {
           </div>
           <div className="uc-c">
             <div className="uc-ico">💬</div>
-            <div className="uc-t">Reward referrals that bring people into your WhatsApp or community funnel</div>
+            <div className="uc-t">Reward shares that bring people into your WhatsApp or community funnel</div>
           </div>
           <div className="uc-c">
             <div className="uc-ico">📄</div>
@@ -234,10 +234,10 @@ export default function Home() {
           </p>
           <div className="why-ps">
             <div className="why-p">
-              <div className="why-p-label">More than referral software</div>
+              <div className="why-p-label">More than sharing software</div>
               <p className="why-p-txt">
                 ValueShare is built for businesses that want outcome-driven growth. Instead of relying only on ads,
-                generic affiliate systems, or manual referral tracking, you can launch reward-powered campaigns that
+                generic affiliate systems, or manual tracking, you can launch reward-powered campaigns that
                 motivate people to help you grow — and reward them automatically when they deliver results.
               </p>
             </div>
@@ -255,7 +255,7 @@ export default function Home() {
               <div className="ti-q">&ldquo;</div>
               <p className="ti-txt">
                 I launched a webinar campaign and hit 500 registrations in 72 hours.
-                The referral mechanic did all the heavy lifting — participants recruited
+                The ValueShare mechanic did all the heavy lifting — participants recruited
                 each other without me lifting a finger.
               </p>
               <div className="ti-auth">
@@ -294,7 +294,7 @@ export default function Home() {
           deliver rewards automatically.
         </p>
         <div className="feat-strip">
-          <div className="fs-c"><div className="fs-ico">🔗</div><div className="fs-t">Unique referral links</div><p className="fs-d">Every participant gets a personal link. Every click attributed to the right person.</p></div>
+          <div className="fs-c"><div className="fs-ico">🔗</div><div className="fs-t">Unique ValueShare links</div><p className="fs-d">Every participant gets a personal link. Every click attributed to the right person.</p></div>
           <div className="fs-c"><div className="fs-ico">🛡️</div><div className="fs-t">Fraud prevention</div><p className="fs-d">IP tracking, device fingerprinting, velocity limits. Only real clicks count.</p></div>
           <div className="fs-c"><div className="fs-ico">🎁</div><div className="fs-t">Auto reward delivery</div><p className="fs-d">Files, videos, booking links — delivered the instant a milestone is hit.</p></div>
           <div className="fs-c"><div className="fs-ico">📊</div><div className="fs-t">Live analytics</div><p className="fs-d">Viral coefficient, top performers, click sources. Everything in real time.</p></div>

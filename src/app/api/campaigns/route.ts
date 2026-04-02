@@ -81,8 +81,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: slugError.message }, { status: 500 })
     }
 
-    // Extract reward_tiers from payload — everything else goes into campaigns
-    const { reward_tiers, ...campaignFields } = body
+    // Extract reward_tiers and strictly whitelist allowed campaign fields
+    const { reward_tiers, name, template, headline, subheadline, description, hero_image_url, hero_video_url, benefits, how_it_works, creator_display_name, creator_photo_url, destination_url, thankyou_page_url, kpi_type, deadline, show_countdown, participant_cap, social_proof_visible, landing_template, landing_config, flyer_image_url, flyer_caption, require_flyer } = body
+    const campaignFields = { name, template, headline, subheadline, description, hero_image_url, hero_video_url, benefits, how_it_works, creator_display_name, creator_photo_url, destination_url, thankyou_page_url, kpi_type, deadline, show_countdown, participant_cap, social_proof_visible, landing_template, landing_config, flyer_image_url, flyer_caption, require_flyer }
+    
+    // Strip undefined fields to preserve standard SQL defaults
+    Object.keys(campaignFields).forEach(key => campaignFields[key as keyof typeof campaignFields] === undefined && delete campaignFields[key as keyof typeof campaignFields])
 
     const { data: campaign, error: insertError } = await supabase
       .from('campaigns')

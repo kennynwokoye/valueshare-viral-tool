@@ -64,14 +64,21 @@ export async function PATCH(
     const { supabase } = result as Awaited<ReturnType<typeof getAuthAndCampaign>> & { supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> }
 
     const body: UpdateCampaignPayload = await request.json()
-    const { reward_tiers, ...campaignFields } = body
+    const { reward_tiers, name, template, headline, subheadline, description, hero_image_url, hero_video_url, benefits, how_it_works, creator_display_name, creator_photo_url, destination_url, thankyou_page_url, kpi_type, deadline, show_countdown, participant_cap, social_proof_visible, landing_template, landing_config, flyer_image_url, flyer_caption, require_flyer, marketplace_listed, cost_per_lead, cost_per_lead_currency } = body
+    const baseFields = { name, template, headline, subheadline, description, hero_image_url, hero_video_url, benefits, how_it_works, creator_display_name, creator_photo_url, destination_url, thankyou_page_url, kpi_type, deadline, show_countdown, participant_cap, social_proof_visible, landing_template, landing_config, flyer_image_url, flyer_caption, require_flyer, marketplace_listed, cost_per_lead, cost_per_lead_currency }
+    
+    // Strip undefined
+    const campaignFields: Record<string, any> = {}
+    Object.entries(baseFields).forEach(([key, val]) => {
+      if (val !== undefined) campaignFields[key] = val
+    })
 
     // If name is changing (and different from current), regenerate slug
     if (campaignFields.name && campaignFields.name !== (result.campaign as Record<string, unknown>).name) {
       const { data: slug } = await supabase.rpc('generate_campaign_slug', {
         campaign_name: campaignFields.name,
       })
-      if (slug) (campaignFields as Record<string, unknown>).slug = slug
+      if (slug) campaignFields.slug = slug
     }
 
     // Update campaign fields (only if there are any)

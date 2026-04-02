@@ -355,7 +355,7 @@ function OverviewPage({
       return {
         eyebrow: 'Getting started',
         title: <>Launch your <span>first campaign</span></>,
-        sub: 'Set up a referral campaign in minutes and start growing with zero ad spend.',
+        sub: 'Set up a ValueShare campaign in minutes and start growing with zero ad spend.',
         right: 'cta' as const,
         ctaLabel: '+ Create campaign',
         ctaAction: () => router.push('/dashboard/creator/campaigns/new'),
@@ -379,7 +379,7 @@ function OverviewPage({
       return {
         eyebrow: 'Campaign is live',
         title: <>Now <span>share the link</span></>,
-        sub: <><strong>{firstActive?.name}</strong> is live and ready. Share it to start driving referral traffic.</>,
+        sub: <><strong>{firstActive?.name}</strong> is live and ready. Share it to start driving ValueShare traffic.</>,
         right: 'cta' as const,
         ctaLabel: 'View campaign →',
         ctaAction: () => window.open(`/c/${firstActive?.slug}`, '_blank'),
@@ -770,6 +770,7 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
   const [webhookSecrets, setWebhookSecrets] = useState<Record<string, string>>({})
   const [secretCopied, setSecretCopied] = useState<Record<string, boolean>>({})
   const [snippetCopied, setSnippetCopied] = useState<Record<string, boolean>>({})
+  const [thanksUrlCopied, setThanksUrlCopied] = useState<Record<string, boolean>>({})
 
   async function fetchWebhookSecret(campId: string) {
     if (webhookSecrets[campId]) return
@@ -786,6 +787,12 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
     const next = !trackingOpen[campId]
     setTrackingOpen((prev) => ({ ...prev, [campId]: next }))
     if (next) fetchWebhookSecret(campId)
+  }
+
+  function copyThanksUrl(campSlug: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/c/${campSlug}/thanks`)
+    setThanksUrlCopied((prev) => ({ ...prev, [campSlug]: true }))
+    setTimeout(() => setThanksUrlCopied((prev) => ({ ...prev, [campSlug]: false })), 2000)
   }
 
   function copySnippet(campId: string) {
@@ -1075,11 +1082,31 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                     {trackingOpen[camp.id] && (
                       <div style={{ padding: '0 24px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <div style={{ fontSize: 13, color: 'var(--ink3)', lineHeight: 1.5 }}>
-                          Since your goal is <strong>{camp.kpi_type === 'registrations' ? 'sign-ups' : camp.kpi_type}</strong>, you need to install tracking on your thank-you page so ValueShare can verify conversions.
+                          Since your goal is <strong>{camp.kpi_type === 'registrations' ? 'sign-ups' : camp.kpi_type}</strong>, set up tracking so ValueShare can verify conversions.
+                        </div>
+                        {/* Thank-you URL (recommended) */}
+                        <div style={{ background: 'var(--slate)', border: '1.5px solid var(--coral)', borderRadius: 10, padding: 14 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Option 1 — Thank-You Redirect</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--coral)', padding: '1px 7px', borderRadius: 20 }}>Recommended</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10, lineHeight: 1.5 }}>
+                            No code needed. In your registration platform (Eventbrite, Luma, Google Forms, etc.), set the <strong>post-registration redirect URL</strong> to:
+                          </div>
+                          <div style={{ background: '#1a1a2e', borderRadius: 7, padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: '#a5f3fc', wordBreak: 'break-all', marginBottom: 10 }}>
+                            {`${typeof window !== 'undefined' ? window.location.origin : 'https://valueshare.co'}/c/${camp.slug}/thanks`}
+                          </div>
+                          <button
+                            className="cfc-btn sec"
+                            onClick={() => copyThanksUrl(camp.slug)}
+                            style={{ fontSize: 12 }}
+                          >
+                            {thanksUrlCopied[camp.slug] ? '✓ Copied!' : '📋 Copy URL'}
+                          </button>
                         </div>
                         {/* Pixel snippet */}
                         <div style={{ background: 'var(--slate)', border: '1.5px solid var(--border2)', borderRadius: 10, padding: 14 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Option 1 — JS Pixel (easiest)</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Option 2 — JS Pixel</div>
                           <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10 }}>Paste this on your <strong>thank-you / confirmation page</strong>. Works on Webflow, WordPress, Carrd, any HTML site.</div>
                           <div style={{ background: '#1a1a2e', borderRadius: 7, padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: '#a5f3fc', wordBreak: 'break-all', marginBottom: 10 }}>
                             {`<script src="https://valueshare.co/pixel.js"></script>`}
@@ -1094,7 +1121,7 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                         </div>
                         {/* Webhook */}
                         <div style={{ background: 'var(--slate)', border: '1.5px solid var(--border2)', borderRadius: 10, padding: 14 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Option 2 — Server Webhook</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Option 3 — Server Webhook</div>
                           <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10 }}>
                             POST to <code style={{ background: 'var(--slate2)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>https://valueshare.co/api/conversion</code> from your backend or a Zapier/Make.com workflow when a sign-up happens.
                           </div>
@@ -1240,7 +1267,7 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Set your cost per lead</div>
               <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
-                Enter what you currently pay per lead through paid ads. ValueShare will calculate how much you&apos;re saving with organic referrals.
+                Enter what you currently pay per lead through paid ads. ValueShare will calculate how much you&apos;re saving with organic ValueShares.
               </div>
             </div>
 

@@ -127,25 +127,7 @@ export function useParticipantRealtime(
         }
       )
 
-      // 4. Campaign-wide clicks → debounced leaderboard refresh
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'referral_clicks',
-          filter: `campaign_id=eq.${campaignId}`,
-        },
-        () => {
-          // Debounce: wait 3s after last click before marking leaderboard stale
-          if (leaderboardTimerRef.current) clearTimeout(leaderboardTimerRef.current)
-          leaderboardTimerRef.current = setTimeout(() => {
-            setLeaderboardStale(true)
-          }, 3000)
-        }
-      )
-
-      // 5. Campaign status changes (paused/ended)
+      // 4 & 5. Campaign global update (clicks incrementing & status changes)
       .on(
         'postgres_changes',
         {
@@ -159,6 +141,12 @@ export function useParticipantRealtime(
           if (updated.status === 'paused' || updated.status === 'ended') {
             setCampaignStatusChange(updated.status)
           }
+
+          // Debounce: wait 3s after last click before marking leaderboard stale
+          if (leaderboardTimerRef.current) clearTimeout(leaderboardTimerRef.current)
+          leaderboardTimerRef.current = setTimeout(() => {
+            setLeaderboardStale(true)
+          }, 3000)
         }
       )
 

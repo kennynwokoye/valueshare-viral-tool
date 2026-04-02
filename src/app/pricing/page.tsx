@@ -18,7 +18,7 @@ const PLANS = [
     features: [
       '1 active campaign',
       'Up to 500 participants',
-      'Unique referral links',
+      'Unique ValueShare links',
       'Automatic reward delivery',
       'Basic analytics',
       'File & URL reward types',
@@ -162,7 +162,7 @@ export default function PricingPage() {
           <p className="pr-note-body">
             ValueShare is built to help digital businesses acquire attention, signups, and customers by turning
             existing value into structured campaigns. The Starter plan is free so you can validate the approach.
-            Growth and Scale plans are designed for businesses where referral campaigns become a core acquisition channel.
+            Growth and Scale plans are designed for businesses where ValueShare campaigns become a core acquisition channel.
           </p>
         </div>
       </div>
