@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import {
+  sendRewardUnlockedEmail,
+  sendCreatorRewardNotification,
+} from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -193,7 +197,80 @@ async function recordConversion(payload: ConversionPayload): Promise<boolean> {
     user_agent: payload.userAgent,
   })
 
-  return !error
+  if (error) return false
+
+  // Send reward emails for any newly unlocked tiers (fire-and-forget)
+  if (participantId && campaignId) {
+    dispatchRewardEmails(supabase, participantId, campaignId).catch(() => {})
+  }
+
+  return true
+}
+
+async function dispatchRewardEmails(
+  supabase: ReturnType<typeof createAdminClient>,
+  participantId: string,
+  campaignId: string,
+) {
+  const { data: pendingUnlocks } = await supabase
+    .from('reward_unlocks')
+    .select(
+      'id, access_token, tier_id, reward_tiers!inner(reward_label, label, reward_type)'
+    )
+    .eq('participant_id', participantId)
+    .eq('delivery_email_sent', false)
+
+  if (!pendingUnlocks || pendingUnlocks.length === 0) return
+
+  // Get participant email and campaign info
+  const [{ data: participant }, { data: campaign }] = await Promise.all([
+    supabase.from('participants').select('email').eq('id', participantId).single(),
+    supabase.from('campaigns').select('name, creator_id').eq('id', campaignId).single(),
+  ])
+
+  if (!participant || !campaign) return
+
+  const { data: creator } = await supabase
+    .from('users')
+    .select('email')
+    .eq('id', campaign.creator_id)
+    .single()
+
+  const emailPromises = pendingUnlocks.map(async (unlock) => {
+    const tier = unlock.reward_tiers as unknown as {
+      reward_label: string
+      label: string
+      reward_type: string
+    }
+
+    await sendRewardUnlockedEmail({
+      to: participant.email,
+      rewardLabel: tier.reward_label,
+      tierLabel: tier.label,
+      campaignTitle: campaign.name,
+      accessToken: unlock.access_token,
+      rewardType: tier.reward_type,
+    })
+
+    if (creator) {
+      await sendCreatorRewardNotification({
+        to: creator.email,
+        participantEmail: participant.email,
+        rewardLabel: tier.reward_label,
+        campaignTitle: campaign.name,
+      })
+    }
+
+    await supabase
+      .from('reward_unlocks')
+      .update({
+        delivery_email_sent: true,
+        delivered_at: new Date().toISOString(),
+      })
+      .eq('id', unlock.id)
+  })
+
+  await Promise.allSettled(emailPromises)
 }
 
 function pixelResponse(): NextResponse {

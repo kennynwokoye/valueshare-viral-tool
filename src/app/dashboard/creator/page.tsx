@@ -790,7 +790,7 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
   }
 
   function copyThanksUrl(campSlug: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/c/${campSlug}/thanks`)
+    navigator.clipboard.writeText(`${window.location.origin}/c/${campSlug}/confirm`)
     setThanksUrlCopied((prev) => ({ ...prev, [campSlug]: true }))
     setTimeout(() => setThanksUrlCopied((prev) => ({ ...prev, [campSlug]: false })), 2000)
   }
@@ -1094,7 +1094,7 @@ function CampaignsPage({ campaigns, onRefresh }: { campaigns: CampaignWithTiers[
                             No code needed. In your registration platform (Eventbrite, Luma, Google Forms, etc.), set the <strong>post-registration redirect URL</strong> to:
                           </div>
                           <div style={{ background: '#1a1a2e', borderRadius: 7, padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: '#a5f3fc', wordBreak: 'break-all', marginBottom: 10 }}>
-                            {`${typeof window !== 'undefined' ? window.location.origin : 'https://valueshare.co'}/c/${camp.slug}/thanks`}
+                            {`${typeof window !== 'undefined' ? window.location.origin : 'https://valueshare.co'}/c/${camp.slug}/confirm`}
                           </div>
                           <button
                             className="cfc-btn sec"

@@ -104,6 +104,9 @@ export default function CampaignWizardPage() {
           deadline: campaign.deadline ?? undefined,
           landing_template: campaign.landing_template || 'starter',
           landing_config: campaign.landing_config || {},
+          flyer_image_url: campaign.flyer_image_url || '',
+          flyer_caption: campaign.flyer_caption || '',
+          require_flyer: campaign.require_flyer ?? false,
           reward_tiers: campaign.reward_tiers?.length
             ? campaign.reward_tiers.map((t: Record<string, unknown>) => ({
                 tier_order: t.tier_order as number,

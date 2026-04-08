@@ -386,9 +386,9 @@ export default async function CampaignPage({ params }: Props) {
       {campaign.flyer_caption && (
         <p style={{ fontSize: 13, color: 'var(--cl-text-muted)', lineHeight: 1.5, margin: '0 0 10px' }}>{campaign.flyer_caption}</p>
       )}
-      <div style={{ padding: '9px 0', textAlign: 'center', background: 'var(--cl-accent)', color: '#fff', borderRadius: 7, fontSize: 13, fontWeight: 700 }}>
+      <a href={campaign.flyer_image_url} download target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '9px 0', textAlign: 'center', background: 'var(--cl-accent)', color: '#fff', borderRadius: 7, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
         📦 Download Promo Pack
-      </div>
+      </a>
     </div>
   ) : null
 

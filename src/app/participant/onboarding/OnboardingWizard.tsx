@@ -184,6 +184,36 @@ export default function OnboardingWizard({ referralCode, email, campaign, firstT
             <div className="ob-step-title">🖼️ Promotional materials</div>
             <p className="ob-step-sub">Use these to make sharing easier.</p>
 
+            {/* Campaign flyer */}
+            {campaign.flyer_image_url && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--vs-text-2)', marginBottom: 8 }}>Campaign flyer</div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={campaign.flyer_image_url}
+                  alt={`${campaign.name} flyer`}
+                  style={{ width: '100%', borderRadius: 10, marginBottom: 10, display: 'block' }}
+                />
+                {campaign.flyer_caption && (
+                  <p style={{ fontSize: 13, color: 'var(--vs-text-3)', lineHeight: 1.5, margin: '0 0 10px' }}>{campaign.flyer_caption}</p>
+                )}
+                <a
+                  href={campaign.flyer_image_url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', padding: '10px 0', textAlign: 'center', background: 'var(--vs-accent, #e85d3a)', color: '#fff', borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+                >
+                  ⬇ Download Flyer
+                </a>
+                {campaign.require_flyer && (
+                  <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, fontSize: 12, color: '#92400e' }}>
+                    Please share this flyer as part of your campaign promotion.
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Creator promo assets */}
             {promoAssets.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>

@@ -25,7 +25,7 @@ export default async function ParticipantOnboardingPage({
   // Fetch full campaign record
   const { data: campaign } = await supabase
     .from('campaigns')
-    .select('id,name,slug,template,headline,subheadline,description,hero_image_url,hero_video_url,benefits,how_it_works,creator_display_name,creator_photo_url,destination_url,thankyou_page_url,kpi_type,deadline,show_countdown,participant_cap,social_proof_visible,status,total_participants,total_clicks,marketplace_listed,created_at,updated_at,creator_id')
+    .select('id,name,slug,template,headline,subheadline,description,hero_image_url,hero_video_url,benefits,how_it_works,creator_display_name,creator_photo_url,destination_url,thankyou_page_url,kpi_type,deadline,show_countdown,participant_cap,social_proof_visible,status,total_participants,total_clicks,marketplace_listed,created_at,updated_at,creator_id,flyer_image_url,flyer_caption,require_flyer')
     .eq('id', campaignId)
     .single()
 

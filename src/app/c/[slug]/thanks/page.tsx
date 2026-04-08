@@ -1,4 +1,3 @@
-import { cookies, headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
@@ -22,11 +21,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * Display-only thank-you page.
+ * Conversion recording happens in /c/[slug]/confirm (route handler) which
+ * clears the cookie and redirects here. This page just shows a nice message.
+ */
 export default async function ThanksPage({ params }: Props) {
   const { slug } = await params
   const supabase = createAdminClient()
 
-  // Look up campaign
   const { data: campaign } = await supabase
     .from('campaigns')
     .select('id, name, slug, headline, hero_image_url, status, landing_config')
@@ -35,56 +38,6 @@ export default async function ThanksPage({ params }: Props) {
 
   if (!campaign) notFound()
 
-  const cookieStore = await cookies()
-  const pendingRef = cookieStore.get('vs_pending_ref')?.value
-  let conversionRecorded = false
-
-  if (pendingRef && campaign.status === 'active') {
-    // Look up the referring participant
-    const { data: referrer } = await supabase
-      .from('participants')
-      .select('id')
-      .eq('referral_code', pendingRef)
-      .eq('campaign_id', campaign.id)
-      .single()
-
-    if (referrer) {
-      // Get visitor IP for server-side dedup
-      const hdrs = await headers()
-      const ip =
-        hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-        hdrs.get('x-real-ip') ||
-        '0.0.0.0'
-
-      // Server-side dedup: check if conversion already recorded for this ref + IP in last 24h
-      const { count } = await supabase
-        .from('conversions')
-        .select('id', { count: 'exact', head: true })
-        .eq('ref_code', pendingRef)
-        .eq('ip_address', ip)
-        .gte('created_at', new Date(Date.now() - 86400000).toISOString())
-
-      if ((count ?? 0) === 0) {
-        // Record conversion — triggers handle_conversion_insert (increments conversion_count, checks rewards)
-        const { error } = await supabase.from('conversions').insert({
-          participant_id: referrer.id,
-          campaign_id: campaign.id,
-          ref_code: pendingRef,
-          event_type: 'registration',
-          metadata: { source: 'thankyou_page' },
-          ip_address: ip,
-          user_agent: hdrs.get('user-agent'),
-        })
-
-        conversionRecorded = !error
-      }
-    }
-
-    // Clear cookie to prevent duplicate on refresh (set expired)
-    cookieStore.delete('vs_pending_ref')
-  }
-
-  // Parse accent color from landing_config
   const config = (campaign.landing_config ?? {}) as Record<string, string>
   const accent = config.accentColor || '#e85d3a'
 
@@ -151,12 +104,11 @@ export default async function ThanksPage({ params }: Props) {
           }}
         >
           Thanks for signing up for <strong>{campaign.name}</strong>.
-          {conversionRecorded
-            ? ' Your registration has been confirmed.'
-            : ' We look forward to seeing you there.'}
+          We look forward to seeing you there.
         </p>
 
         {campaign.hero_image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={campaign.hero_image_url}
             alt={campaign.name}
