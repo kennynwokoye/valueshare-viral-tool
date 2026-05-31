@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ValueShare Viral Tool
 
-## Getting Started
+ValueShare is an open-source referral-gated content sharing tool for creators, educators, and community operators. It lets a user unlock valuable content after their referral link generates a defined number of unique visits.
 
-First, run the development server:
+The project is built for practical creator and education workflows where distribution matters as much as content delivery. A coach, course creator, newsletter owner, or community manager can publish a lead magnet, give every participant a referral link, and unlock the resource once the participant helps spread it.
+
+## Why this exists
+
+Many creators and small education businesses need simple viral loops, but most referral tools are either paid SaaS products, too heavy for small campaigns, or not flexible enough for local market needs. ValueShare is intended to be a transparent, self-hostable alternative that developers can adapt for their own communities.
+
+## Core features
+
+- Referral link generation for each participant
+- Unique-click tracking for unlock thresholds
+- Content unlock flow for ebooks, videos, links, or course resources
+- Campaign management workflow
+- TypeScript and Next.js frontend
+- Supabase/PostgreSQL-backed data model
+- Lightweight deployment path for small teams
+
+## Maintainer workflows
+
+This repository is maintained by Kenny Nwokoye. Current maintenance work includes:
+
+- Reviewing and improving campaign, referral, and unlock logic
+- Tracking issues and feature requests from creator and education use cases
+- Keeping the project deployable for self-hosted and small-team environments
+- Improving documentation so other operators can adapt it
+- Using AI coding tools for triage, refactoring, security checks, and release-readiness review
+
+## Tech stack
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+- Supabase/PostgreSQL
+- Node.js tooling
+
+## Getting started
 
 ```bash
+git clone https://github.com/kennynwokoye/valueshare-viral-tool.git
+cd valueshare-viral-tool
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a local `.env.local` file based on the variables used in the app. Do not commit secrets.
 
-## Learn More
+Typical values may include:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the contribution workflow.
 
-## Deploy on Vercel
+Good first contribution areas:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Improve setup documentation
+- Add tests around referral and unlock logic
+- Improve accessibility and mobile UI
+- Add deployment guides
+- Review database policies and security rules
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Security
+
+If you find a vulnerability, please follow [SECURITY.md](./SECURITY.md). Do not publish exploitable details in a public issue before the maintainer has had time to review.
+
+## License
+
+MIT. See [LICENSE](./LICENSE).
